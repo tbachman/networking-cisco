@@ -35,13 +35,17 @@ from networking_cisco.plugins.ml2.drivers.cisco.nexus import (
 from networking_cisco.plugins.ml2.drivers.cisco.nexus import (
     nexus_network_driver)
 
+from neutron import context as ctx
+from neutron import manager
 from neutron.common import constants as n_const
 from neutron.db import api as db_api
+from neutron.extensions import l3
 from neutron.extensions import portbindings
 from neutron.i18n import _LW, _LE, _LI
 from neutron.plugins.common import constants as p_const
 from neutron.plugins.ml2 import db as ml2_db
 from neutron.plugins.ml2 import driver_api as api
+from neutron.plugins.common import constants as service_constants
 
 LOG = logging.getLogger(__name__)
 
@@ -693,6 +697,26 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
             fields += "host_id" if not host_id else ""
             raise excep.NexusMissingRequiredFields(fields=fields)
 
+    def _process_l3_for_port(self, context):
+        if conf.cfg.CONF.ml2_cisco.vrf_enabled:
+            port = context.original
+            tenant_id = port['tenant_id']
+            network_id = port['network_id']
+            dbcontext = context._plugin_context
+            port_filter = {'device_owner': ['network:router_interface'],
+                           'tenant_id': [tenant_id],
+                           'network_id': [network_id]}
+            router_ports = context._plugin.get_ports(dbcontext, port_filter)
+            l3plugin = (manager.NeutronManager.get_service_plugins().get(
+                            service_constants.L3_ROUTER_NAT))
+            if l3plugin:
+                ctx_admin = ctx.get_admin_context()
+                for router_port in router_ports:
+                    router = l3plugin.get_router(ctx_admin,
+                                                 router_port['device_id'])
+                    l3plugin._create_vrf(ctx_admin,
+                                         router.get('id'), port)
+
     def _monitor_thread(self):
         """Periodically restarts the monitor thread."""
         with self.monitor_lock:
@@ -711,6 +735,7 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
     @lockutils.synchronized('cisco-nexus-portlock')
     def update_port_precommit(self, context):
         """Update port pre-database transaction commit event."""
+        self._process_l3_for_port(context)
         vlan_segment, vxlan_segment = self._get_segments(
                                         context.top_bound_segment,
                                         context.bottom_bound_segment)

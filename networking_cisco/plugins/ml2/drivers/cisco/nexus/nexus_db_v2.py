@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
+import uuid
 
 from oslo_log import log as logging
 import sqlalchemy.orm.exc as sa_exc
@@ -124,10 +125,51 @@ def get_port_switch_bindings(port_id, switch_ip):
         pass
 
 
-def get_nexussvi_bindings():
+def get_nexussvi_bindings(session, vlan_id=None, switch_ip=None):
     """Lists nexus svi bindings."""
     LOG.debug("get_nexussvi_bindings() called")
-    return _lookup_all_nexus_bindings(port_id='router')
+    if session is None:
+        session = db.get_session()
+
+    bindings = session.query(nexus_models_v2.NexusSVIBinding)
+    if vlan_id:
+        bindings = bindings.filter_by(vlan_id=vlan_id)
+    if switch_ip:
+        bindings = bindings.filter_by(switch_ip=switch_ip)
+
+    bindings = bindings.all()
+
+    if bindings:
+        return bindings
+    else:
+        return []
+
+
+def add_nexussvi_binding(session, switch_ip, vlan_id, subnet_id,
+                         router_id, vrf_id):
+    """Adds a Nexus SVI binding."""
+    LOG.debug("add_nexussvi_binding() called")
+    if session is None:
+        session = db.get_session()
+
+    binding = nexus_models_v2.NexusSVIBinding(switch_ip=switch_ip,
+                                              vlan_id=vlan_id,
+                                              subnet_id=subnet_id,
+                                              router_id=router_id,
+                                              vrf_id=vrf_id)
+    session.add(binding)
+    session.flush()
+
+    return binding
+
+
+def delete_nexussvi_binding(session, vlan_id):
+    """Removes a Nexus SVI binding."""
+    bindings = get_nexussvi_bindings(session, vlan_id)
+    for binding in bindings:
+        session.delete(binding)
+
+    session.flush()
 
 
 def _lookup_nexus_bindings(query_type, session=None, **bfilter):
@@ -233,3 +275,96 @@ def get_nve_vni_deviceid_bindings(vni, device_id):
                 filter_by(vni=vni, device_id=device_id).all())
     except sa_exc.NoResultFound:
         return None
+
+
+def add_nexus_vrf(session, router_id):
+    if session is None:
+        session = db.get_session()
+
+    vrf_id = str(uuid.uuid4())
+    vrf_id = vrf_id.replace('-','')
+    binding = nexus_models_v2.NexusVRF(vrf_id=vrf_id,
+                                       router_id=router_id)
+
+    session.add(binding)
+    session.flush()
+
+    return binding
+
+
+def delete_nexus_vrf(session, vrf_id):
+    if session is None:
+        session = db.get_session()
+    try:
+        binding = session.query(nexus_models_v2.NexusVRF).filter_by(
+            vrf_id=vrf_id).one()
+    except:
+        pass
+    session.delete(binding)
+
+
+def get_nexus_vrf(session, router_id):
+    if session is None:
+        session = db.get_session()
+
+    binding = session.query(nexus_models_v2.NexusVRF).filter_by(
+        router_id=router_id).one()
+
+    return binding
+
+
+def add_nexus_vrf_binding(session, vrf_id, switch_ip, gateway_ip=None):
+    if session is None:
+        session = db.get_session()
+
+    binding = nexus_models_v2.NexusVRFBinding(vrf_id=vrf_id,
+                                              switch_ip=switch_ip,
+                                              gateway_ip=gateway_ip)
+    session.add(binding)
+    session.flush()
+
+    return binding
+
+
+def delete_nexus_vrf_binding(session, vrf_id, switch_ip):
+    if session is None:
+        session = db.get_session()
+
+    binding = session.query(nexus_models_v2.NexusVRFBinding).filter_by(
+        vrf_id=vrf_id, switch_ip=switch_ip).one()
+
+    session.delete(binding)
+
+
+def get_nexus_vrf_bindings(session, vrf_id):
+    if session is None:
+        session = db.get_session()
+
+    return session.query(nexus_models_v2.NexusVRFBinding).filter_by(
+        vrf_id=vrf_id).all()
+
+
+def get_nexus_vrf_binding(session, vrf_id, switch_ip):
+    if session is None:
+        session = db.get_session()
+
+    return session.query(nexus_models_v2.NexusVRFBinding).filter_by(
+        vrf_id=vrf_id, switch_ip=switch_ip).first()
+
+
+def add_nexus_vrf_binding_gateway(session, vrf_id, switch_ip, gateway_ip):
+    if session is None:
+        session = db.get_session()
+    binding = get_nexus_vrf_binding(session, vrf_id, switch_ip)
+    binding.gateway_ip = gateway_ip
+    session.merge(binding)
+    session.flush()
+
+
+def del_nexus_vrf_binding_gateway(session, vrf_id, switch_ip):
+    if session is None:
+        session = db.get_session()
+    binding = get_nexus_vrf_binding(session, vrf_id, switch_ip)
+    binding.gateway_ip = None
+    session.merge(binding)
+    session.flush()

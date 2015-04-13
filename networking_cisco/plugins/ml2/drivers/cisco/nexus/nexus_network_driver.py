@@ -341,19 +341,19 @@ class CiscoNexusDriver(object):
         LOG.debug("NexusDriver: ")
         self._edit_config(nexus_host, target='running', config=confstr)
 
+    def create_vrf_svi(self, nexus_host, vlan_id, gateway_ip, vrf_id):
+        """Create VLAN vn_segment."""
+        confstr = snipp.CMD_VRF_SVI_SNIPPET % (vlan_id, vrf_id, gateway_ip)
+        confstr = self.create_xml_snippet(confstr)
+        LOG.debug("NexusDriver: ")
+        self._edit_config(nexus_host, target='running', config=confstr)
+
     def delete_vlan_svi(self, nexus_host, vlan_id):
         """Delete VLAN vn_segment."""
         confstr = snipp.CMD_NO_VLAN_SVI_SNIPPET % vlan_id
         confstr = self.create_xml_snippet(confstr)
         LOG.debug("NexusDriver: ")
         self._edit_config(nexus_host, target='running', config=confstr)
-
-    def enable_vxlan_feature(self, nexus_host, nve_int_num, src_intf):
-        """Enable VXLAN on the switch."""
-
-        # Configure the "feature" commands and NVE interface
-        # (without "member" subcommand configuration).
-        # The Nexus 9K will not allow the "interface nve" configuration
         # until the "feature nv overlay" command is issued and installed.
         # To get around the N9K failing on the "interface nve" command
         # send the two XML snippets down separately.
@@ -387,3 +387,36 @@ class CiscoNexusDriver(object):
                                            % (nve_int_num, vni)))
         LOG.debug("NexusDriver: ")
         self._edit_config(nexus_host, config=confstr)
+
+    def create_vrf(self, nexus_host, vrf_name):
+        confstr = snipp.CMD_CREATE_VRF_SNIPPET % (vrf_name)
+        confstr = self.create_xml_snippet(confstr)
+        self._edit_config(nexus_host, target='running', config=confstr)
+
+    def delete_vrf(self, nexus_host, vrf_name):
+        confstr = snipp.CMD_NO_VRF_SNIPPET % (vrf_name)
+        confstr = self.create_xml_snippet(confstr)
+        self._edit_config(nexus_host, target='running', config=confstr)
+
+    def create_floatingip_nat_rule(self, nexus_host, floatingip, internal_ips):
+        for ip in internal_ips:
+            confstr = snipp.CMD_CREATE_NAT_RULE_SNIPPET % (ip, floatingip)
+            confstr = self.create_xml_snippet(confstr)
+            self._edit_config(nexus_host, target='running', config=confstr)
+
+    def delete_floatingip_nat_rule(self, nexus_host, floatingip, internal_ips):
+        for ip in internal_ips:
+            confstr = snipp.CMD_NO_NAT_RULE_SNIPPET % (ip, floatingip)
+            confstr = self.create_xml_snippet(confstr)
+            self._edit_config(nexus_host, target='running', config=confstr)
+
+    def add_vrf_gateway(self, nexus_host, vrf_id, gateway_ip):
+        confstr = snipp.CMD_VRF_DEFAULT_GATEWAY_SNIPPET % (vrf_id, gateway_ip)
+        confstr = self.create_xml_snippet(confstr)
+        self._edit_config(nexus_host, target='running', config=confstr)
+
+    def del_vrf_gateway(self, nexus_host, vrf_id, gateway_ip):
+        confstr = snipp.CMD_NO_VRF_DEFAULT_GATEWAY_SNIPPET % (vrf_id,
+                                                              gateway_ip)
+        confstr = self.create_xml_snippet(confstr)
+        self._edit_config(nexus_host, target='running', config=confstr)

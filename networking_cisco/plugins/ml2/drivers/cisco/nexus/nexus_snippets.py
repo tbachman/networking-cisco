@@ -198,34 +198,6 @@ CMD_NO_VLAN_INT_SNIPPET = """
           </interface>
 """
 
-CMD_VLAN_SVI_SNIPPET = """
-<interface>
-    <vlan>
-        <vlan>%s</vlan>
-        <__XML__MODE_vlan>
-            <no>
-              <shutdown/>
-            </no>
-            <ip>
-                <address>
-                    <address>%s</address>
-                </address>
-            </ip>
-        </__XML__MODE_vlan>
-    </vlan>
-</interface>
-"""
-
-CMD_NO_VLAN_SVI_SNIPPET = """
-<no>
-    <interface>
-        <vlan>
-            <vlan>%s</vlan>
-        </vlan>
-    </interface>
-</no>
-"""
-
 CMD_INT_NVE_SNIPPET = """
 <interface>
     <nve>nve%s</nve>
@@ -268,4 +240,181 @@ CMD_FEATURE_VXLAN_SNIPPET = """
 CMD_NO_FEATURE_VXLAN_SNIPPET = """
 <feature>no feature nv overlay</feature>
 <feature>no feature vn-segment-vlan-based</feature>
+"""
+
+CMD_VLAN_SVI_SNIPPET = """
+<interface>
+    <vlan>
+        <vlan>%s</vlan>
+        <__XML__MODE_vlan>
+            <no>
+              <shutdown/>
+            </no>
+            <ip>
+                <address>
+                    <address>%s</address>
+                </address>
+            </ip>
+        </__XML__MODE_vlan>
+    </vlan>
+</interface>
+"""
+
+CMD_NO_VLAN_SVI_SNIPPET = """
+<no>
+    <interface>
+        <vlan>
+            <vlan>%s</vlan>
+        </vlan>
+    </interface>
+</no>
+"""
+
+CMD_VRF_SVI_SNIPPET = """
+<interface>
+    <vlan>
+        <vlan>%s</vlan>
+        <__XML__MODE_vlan>
+            <vrf>
+                <member>
+                    <member>%s</member>
+                </member>
+            </vrf>
+            <no>
+                <shutdown/>
+            </no>
+            <ip>
+                <address>
+                    <address>%s</address>
+                </address>
+            </ip>
+        </__XML__MODE_vlan>
+    </vlan>
+</interface>
+"""
+
+CMD_NO_VRF_SVI_SNIPPET = """
+<vrf>
+    <context>
+        <vrf-name-known-name>
+            <__XML__PARAM_value>%s</__XML__PARAM_value>
+            <__XML__MODE_vrf>
+                <no>
+                    <interface>
+                        <vlan>
+                            <vlan>%s</vlan>
+                        </vlan>
+                    </interface>
+                </no>
+            </__XML__MODE_vrf>
+        </vrf-name-known-name>
+    </context>
+</vrf>
+"""
+
+CMD_CREATE_VRF_SNIPPET = """
+<vrf>
+    <context>
+        <vrf-name-known-name>
+            <__XML__PARAM_value>%s</__XML__PARAM_value>
+            <__XML__MODE_vrf>
+                <no>
+                    <shutdown/>
+                </no>
+            </__XML__MODE_vrf>
+        </vrf-name-known-name>
+    </context>
+</vrf>
+"""
+
+CMD_NO_VRF_SNIPPET = """
+<no>
+    <vrf>
+        <context>
+            <vrf-name-known-name>
+                <__XML__PARAM_value>%s</__XML__PARAM_value>
+            </vrf-name-known-name>
+        </context>
+    </vrf>
+</no>
+"""
+
+CMD_CREATE_NAT_RULE_SNIPPET = """
+<ip>
+    <nat>
+        <inside>
+            <source>
+                <static>
+                    <static>
+                        <__XML__PARAM_value>%s</__XML__PARAM_value>
+                        <__XML__PARAM_value>%s</__XML__PARAM_value>
+                    </static>
+                </static>
+            </source>
+        </inside>
+    </nat>
+</ip>
+"""
+
+CMD_NO_NAT_RULE_SNIPPET = """
+<no>
+<ip>
+    <nat>
+        <inside>
+            <source>
+                <static>
+                    <static>
+                        <__XML__PARAM_value>%s</__XML__PARAM_value>
+                        <__XML__PARAM_value>%s</__XML__PARAM_value>
+                    </static>
+                </static>
+            </source>
+        </inside>
+    </nat>
+</ip>
+</no>
+"""
+
+CMD_VRF_DEFAULT_GATEWAY_SNIPPET = """
+<vrf>
+    <context>
+        <vrf-name-known-name>
+            <__XML__PARAM_value>%s</__XML__PARAM_value>
+            <__XML__MODE_vrf>
+                <ip>
+                    <route>
+                        <route>
+                            <__XML__PARAM_value>0.0.0.0</__XML__PARAM_value>
+                            <__XML__PARAM_value>0.0.0.0</__XML__PARAM_value>
+                            <__XML__PARAM_value>%s</__XML__PARAM_value>
+                        </route>
+                    </route>
+                </ip>
+            </__XML__MODE_vrf>
+        </vrf-name-known-name>
+    </context>
+</vrf>
+"""
+
+CMD_NO_VRF_DEFAULT_GATEWAY_SNIPPET = """
+<vrf>
+    <context>
+        <vrf-name-known-name>
+            <__XML__PARAM_value>%s</__XML__PARAM_value>
+            <__XML__MODE_vrf>
+                <no>
+                    <ip>
+                        <route>
+                            <route>
+                                <__XML__PARAM_value>0.0.0.0</__XML__PARAM_value>
+                                <__XML__PARAM_value>0.0.0.0</__XML__PARAM_value>
+                                <__XML__PARAM_value>%s</__XML__PARAM_value>
+                            </route>
+                        </route>
+                    </ip>
+                </no>
+            </__XML__MODE_vrf>
+        </vrf-name-known-name>
+    </context>
+</vrf>
 """
