@@ -24,6 +24,7 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 
+import networking_cisco.plugins
 from networking_cisco.plugins.cisco.common import cisco_constants
 from networking_cisco.plugins.cisco.db.device_manager import (
     hosting_device_manager_db)
@@ -45,8 +46,6 @@ from neutron.db import agents_db
 from neutron.extensions import agent
 from neutron.i18n import _LE
 from neutron import manager
-import neutron.plugins
-from neutron.tests import base
 from neutron.tests.unit.extensions import test_l3
 
 LOG = logging.getLogger(__name__)
@@ -58,7 +57,8 @@ ISO8601_TIME_FORMAT = common_constants.ISO8601_TIME_FORMAT
 CORE_PLUGIN_KLASS = (
     'networking_cisco.tests.unit.cisco.device_manager'
     '.device_manager_test_support.TestCorePlugin')
-extensions_path = ':' + neutron.plugins.__path__[0] + '/cisco/extensions'
+extensions_path = (':' + networking_cisco.plugins.__path__[0] +
+                   '/cisco/extensions')
 
 L3_CFG_HOST_A = 'host_a'
 L3_CFG_HOST_B = 'host_b'
@@ -227,8 +227,8 @@ class DeviceManagerTestSupportMixin(object):
     def _add_device_manager_plugin_ini_file(self):
         # includes config files for device manager service plugin
         cfg_file = (
-            base.ROOTDIR +
-            '/unit/plugins/cisco/etc/cisco_device_manager_plugin.ini')
+            networking_cisco.__path__[0] +
+            '/tests/unit/cisco/etc/cisco_device_manager_plugin.ini')
         if 'config_files' in test_lib.test_config:
             test_lib.test_config['config_files'].append(cfg_file)
         else:

@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+
 import mock
 from oslo_config import cfg
 import six
@@ -25,6 +27,7 @@ from neutron.tests import fake_notifier
 from neutron.tests.unit.db import test_agentschedulers_db
 from neutron.tests.unit.db import test_db_base_plugin_v2
 
+import networking_cisco
 from networking_cisco.plugins.cisco.common import cisco_constants as c_const
 from networking_cisco.plugins.cisco.device_manager import service_vm_lib
 from networking_cisco.plugins.cisco.extensions import ciscocfgagentscheduler
@@ -34,6 +37,9 @@ from networking_cisco.tests.unit.cisco.device_manager import (
 from networking_cisco.tests.unit.cisco.device_manager import (
     test_db_device_manager)
 
+
+policy_path = (os.path.abspath(networking_cisco.__path__[0]) +
+               '/../etc/policy.json')
 
 CORE_PLUGIN_KLASS = dev_mgr_test_support.CORE_PLUGIN_KLASS
 HW_CATEGORY = ciscohostingdevicemanager.HARDWARE_CATEGORY
@@ -121,6 +127,8 @@ class HostingDeviceConfigAgentSchedulerTestCaseBase(
             plugin=core_plugin, service_plugins=service_plugins,
             ext_mgr=ext_mgr)
 
+        # Ensure we use policy definitions from our repo
+        cfg.CONF.set_override('policy_file', policy_path, 'oslo_policy')
         self.core_plugin = manager.NeutronManager.get_plugin()
         self.plugin = self.core_plugin
         self.setup_notification_driver()

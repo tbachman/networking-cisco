@@ -19,12 +19,12 @@ from oslo_log import log as logging
 from oslo_utils import uuidutils
 import webob.exc
 
-import neutron
 from neutron.common import constants as l3_constants
 from neutron import context
 from neutron.extensions import extraroute
 from neutron.extensions import l3
 
+import networking_cisco.plugins
 from networking_cisco.plugins.cisco.db.l3 import ha_db
 from networking_cisco.plugins.cisco.extensions import ha
 from networking_cisco.plugins.cisco.extensions import routertype
@@ -43,7 +43,7 @@ CORE_PLUGIN_KLASS = device_manager_test_support.CORE_PLUGIN_KLASS
 L3_PLUGIN_KLASS = (
     "networking_cisco.tests.unit.cisco.l3.test_ha_l3_router_appliance_plugin."
     "TestApplianceHAL3RouterServicePlugin")
-extensions_path = neutron.plugins.__path__[0] + '/cisco/extensions'
+extensions_path = networking_cisco.plugins.__path__[0] + '/cisco/extensions'
 
 
 class TestHAL3RouterApplianceExtensionManager(

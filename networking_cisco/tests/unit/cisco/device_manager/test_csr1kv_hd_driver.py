@@ -16,18 +16,18 @@ import mock
 from oslo_config import cfg
 from oslo_log import log as logging
 
+import networking_cisco.plugins
 # we must import service_vm_lib to get a config option defined there
 from networking_cisco.plugins.cisco.device_manager import service_vm_lib  # NOQA
 from networking_cisco.plugins.cisco.device_manager.hosting_device_drivers\
     .csr1kv_hd_driver import CSR1kvHostingDeviceDriver
 
-import neutron.plugins
 from neutron.tests import base
 
 LOG = logging.getLogger(__name__)
 
 
-templates_path = (neutron.plugins.__path__[0] +
+templates_path = (networking_cisco.plugins.__path__[0] +
                   '/cisco/device_manager/configdrive_templates')
 
 

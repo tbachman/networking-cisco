@@ -15,6 +15,7 @@
 import mock
 from oslo_log import log as logging
 
+import networking_cisco.plugins
 from networking_cisco.plugins.cisco.db.l3 import l3_router_appliance_db
 from networking_cisco.plugins.cisco.db.l3 import routertype_db
 from networking_cisco.plugins.cisco.db.scheduler import (
@@ -27,9 +28,7 @@ from neutron.api.v2 import attributes
 from neutron.common import test_lib
 from neutron.db import common_db_mixin
 from neutron.extensions import l3
-import neutron.plugins
 from neutron.plugins.common import constants as service_constants
-from neutron.tests import base
 
 LOG = logging.getLogger(__name__)
 
@@ -37,7 +36,7 @@ LOG = logging.getLogger(__name__)
 L3_PLUGIN_KLASS = (
     'networking_cisco.tests.unit.cisco.l3.l3_router_test_support.'
     'TestL3RouterServicePlugin')
-extensions_path = neutron.plugins.__path__[0] + '/cisco/extensions'
+extensions_path = networking_cisco.plugins.__path__[0] + '/cisco/extensions'
 
 
 class L3RouterTestSupportMixin(object):
@@ -57,8 +56,8 @@ class L3RouterTestSupportMixin(object):
     def _add_router_plugin_ini_file(self):
         # includes config file for router service plugin
         cfg_file = (
-            base.ROOTDIR +
-            '/unit/plugins/cisco/etc/cisco_router_plugin.ini')
+            networking_cisco.__path__[0] +
+            '/tests/unit/cisco/etc/cisco_router_plugin.ini')
         if 'config_files' in test_lib.test_config:
             test_lib.test_config['config_files'].append(cfg_file)
         else:

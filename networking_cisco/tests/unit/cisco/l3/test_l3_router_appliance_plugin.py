@@ -12,12 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+
 import mock
 from oslo_config import cfg
 from oslo_log import log as logging
 import six
 
-import neutron
 from neutron.api.v2 import attributes
 from neutron import context as q_context
 from neutron.db import agents_db
@@ -30,6 +31,7 @@ from neutron.tests.unit.db import test_db_base_plugin_v2
 from neutron.tests.unit.extensions import test_extraroute
 from neutron.tests.unit.extensions import test_l3
 
+import networking_cisco.plugins
 from networking_cisco.plugins.cisco.common import cisco_constants as c_const
 from networking_cisco.plugins.cisco.device_manager import service_vm_lib
 from networking_cisco.plugins.cisco.extensions import ciscohostingdevicemanager
@@ -48,7 +50,9 @@ CORE_PLUGIN_KLASS = device_manager_test_support.CORE_PLUGIN_KLASS
 L3_PLUGIN_KLASS = (
     'networking_cisco.tests.unit.cisco.l3.test_l3_router_appliance_plugin.'
     'TestApplianceL3RouterServicePlugin')
-extensions_path = neutron.plugins.__path__[0] + '/cisco/extensions'
+extensions_path = networking_cisco.plugins.__path__[0] + '/cisco/extensions'
+policy_path = (os.path.abspath(networking_cisco.__path__[0]) +
+               '/../etc/policy.json')
 
 
 class TestL3RouterApplianceExtensionManager(
@@ -151,6 +155,9 @@ class L3RouterApplianceTestCaseBase(
             plugin=core_plugin, service_plugins=service_plugins,
             ext_mgr=ext_mgr)
 
+        # Ensure we use policy definitions from our repo
+        cfg.CONF.set_override('policy_file', policy_path, 'oslo_policy')
+
         self.core_plugin = manager.NeutronManager.get_plugin()
         self.plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
@@ -212,10 +219,6 @@ class L3RouterApplianceTestCaseBase(
         device_manager_test_support.TestCorePlugin._svc_vm_mgr_obj = None
         device_manager_test_support.TestCorePlugin._nova_running = False
 
-        #TODO(bobmel): Investigate why the following lines need to be disabled
-#        plugin = manager.NeutronManager.get_service_plugins()[
-#            service_constants.L3_ROUTER_NAT]
-#        plugin._heartbeat.stop()
         self.restore_attribute_map()
         super(L3RouterApplianceTestCaseBase, self).tearDown()
 
