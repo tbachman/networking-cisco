@@ -580,8 +580,7 @@ class HA_db_mixin(object):
                     fields=['fixed_ips', 'id'])
                 redundancy_port = ports[0]
                 fixed_ips = redundancy_port['fixed_ips']
-                fixed_ip = {#'ip_address': attrs.ATTR_NOT_SPECIFIED,
-                            'subnet_id': itfc_info['subnet_id']}
+                fixed_ip = {'subnet_id': itfc_info['subnet_id']}
                 fixed_ips.append(fixed_ip)
                 self._core_plugin.update_port(
                     context, redundancy_port['id'],

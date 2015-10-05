@@ -288,7 +288,7 @@ class HAL3RouterApplianceVMTestCase(
 
     def test_create_non_gw_ha_router_with_ha_spec_invalid_HA_type_fails(self):
         ha_settings = self._get_ha_defaults(
-            redundancy_level=3,ha_type="UNKNOWN", priority=15,
+            redundancy_level=3, ha_type="UNKNOWN", priority=15,
             probing_enabled=True, probe_interval=3, probe_target='10.5.5.2')
         kwargs = {ha.ENABLED: True, ha.DETAILS: ha_settings[ha.DETAILS]}
         res = self._create_router(self.fmt, _uuid(), 'ha_router1',
@@ -907,7 +907,7 @@ class HAL3RouterApplianceVMTestCase(
                 self._verify_ha_settings(rr, ha_disabled_settings)
                 # check that redundancy router have all ports
                 self._verify_router_ports(
-                    rr['id'],subnet['network_id'], subnet['id'],
+                    rr['id'], subnet['network_id'], subnet['id'],
                     port['network_id'], port['fixed_ips'][0]['subnet_id'])
             # verify that non-deleted redundancy routers are the same
             old_rr_ids = set(rr['id'] for rr in redundancy_routers)
@@ -1259,12 +1259,9 @@ class HAL3RouterApplianceVMTestCase(
                                                   s_priv['subnet']['id'], None)
 
     def test_redundancy_router_routes_is_from_user_visible_router(self):
-        routes = [{'destination': '135.207.0.0/16',
-                   'nexthop': '10.0.1.3'},
-                  {'destination': '12.0.0.0/8',
-                   'nexthop': '10.0.1.4'},
-                  {'destination': '141.212.0.0/16',
-                   'nexthop': '10.0.1.5'}]
+        routes = [{'destination': '135.207.0.0/16', 'nexthop': '10.0.1.3'},
+                  {'destination': '12.0.0.0/8', 'nexthop': '10.0.1.4'},
+                  {'destination': '141.212.0.0/16', 'nexthop': '10.0.1.5'}]
         with self.router() as router,\
                 self.subnet(cidr='10.0.1.0/24') as subnet,\
                 self.port(subnet=subnet) as port:
@@ -1283,17 +1280,26 @@ class HAL3RouterApplianceVMTestCase(
                     correct_routes)
             self._routes_update_cleanup(p['id'], None, r['id'], [])
 
+    def _rr_routes_update_prepare(self, router_id, subnet_id, port_id,
+                                  routes_router_id, routes, skip_add=False):
+        if not skip_add:
+            self._router_interface_action('add', router_id, subnet_id, port_id)
+        self._update('routers', routes_router_id, {'router': {
+            'routes': routes}})
+        return self._show('routers', routes_router_id)
+
+    def _rr_routes_update_cleanup(self, port_id, subnet_id, router_id,
+                                  routes_router_id, routes):
+        self._update('routers', routes_router_id, {'router': {
+            'routes': routes}})
+        self._router_interface_action('remove', router_id, subnet_id, port_id)
+
     def test_redundancy_router_routes_includes_user_visible_router(self):
-        routes1 = [{'destination': '135.207.0.0/16',
-                   'nexthop': '10.0.1.3'},
-                  {'destination': '12.0.0.0/8',
-                   'nexthop': '10.0.1.4'},
-                  {'destination': '141.212.0.0/16',
-                   'nexthop': '10.0.1.5'}]
-        routes2 = [{'destination': '155.210.0.0/28',
-                   'nexthop': '11.0.1.7'},
-                   {'destination': '130.238.5.0/24',
-                    'nexthop': '11.0.1.7'}]
+        routes1 = [{'destination': '135.207.0.0/16', 'nexthop': '10.0.1.3'},
+                   {'destination': '12.0.0.0/8', 'nexthop': '10.0.1.4'},
+                   {'destination': '141.212.0.0/16', 'nexthop': '10.0.1.5'}]
+        routes2 = [{'destination': '155.210.0.0/28', 'nexthop': '11.0.1.7'},
+                   {'destination': '130.238.5.0/24', 'nexthop': '11.0.1.7'}]
         with self.router() as router,\
                 self.subnet(cidr='10.0.1.0/24') as subnet1,\
                 self.subnet(cidr='11.0.1.0/24') as subnet2,\
@@ -1305,8 +1311,8 @@ class HAL3RouterApplianceVMTestCase(
             updated_r = self._routes_update_prepare(r['id'], None, p1['id'],
                                                     routes1)['router']
             rr1_id = r[ha.DETAILS][ha.REDUNDANCY_ROUTERS][0]['id']
-            updated_rr1 = self._routes_update_prepare(rr1_id, None, p2['id'],
-                                                      routes2)['router']
+            updated_rr1 = self._rr_routes_update_prepare(
+                r['id'], None, p2['id'], rr1_id, routes2)['router']
             params = "id=%s" % r[ha.DETAILS][ha.REDUNDANCY_ROUTERS][1]['id']
             routers = self._list('routers', query_params=params)['routers']
             routers.append(updated_r)
@@ -1319,7 +1325,7 @@ class HAL3RouterApplianceVMTestCase(
             self.assertEqual(
                 sorted(updated_rr1['routes'], key=utils.safe_sort_key),
                 sorted(routes1, key=utils.safe_sort_key))
-            self._routes_update_cleanup(p2['id'], None, rr1_id, [])
+            self._rr_routes_update_cleanup(p2['id'], None, r['id'], rr1_id, [])
             self._routes_update_cleanup(p1['id'], None, r['id'], [])
 
 
@@ -1411,6 +1417,83 @@ class L3CfgAgentHARouterApplianceTestCase(
         kargs = [item for item in args]
         kargs.append(self._l3_cfg_agent_mock)
         target_func(*kargs)
+
+    def _routes_update_prepare(self, router_id, subnet_id, port_id,
+                               routes_router_id, routes, skip_add=False):
+        if not skip_add:
+            self._router_interface_action('add', router_id, subnet_id, port_id)
+        self._update('routers', routes_router_id, {'router': {
+            'routes': routes}})
+        return self._show('routers', routes_router_id)
+
+    def _routes_update_cleanup(self, port_id, subnet_id, router_id,
+                               routes_router_id, routes):
+        self._update('routers', routes_router_id, {'router': {
+            'routes': routes}})
+        self._router_interface_action('remove', router_id, subnet_id, port_id)
+
+    def test_l3_cfg_agent_query_ha_rdcy_router_routes_is_from_user_vsbl_router(
+            self):
+        routes = [{'destination': '135.207.0.0/16', 'nexthop': '10.0.1.3'},
+                  {'destination': '12.0.0.0/8', 'nexthop': '10.0.1.4'},
+                  {'destination': '141.212.0.0/16', 'nexthop': '10.0.1.5'}]
+        with self.router() as router,\
+                self.subnet(cidr='10.0.1.0/24') as subnet,\
+                self.port(subnet=subnet) as port:
+            r = router['router']
+            p = port['port']
+            self._routes_update_prepare(r['id'], None, p['id'], r['id'],
+                                        routes)
+            router_ids = [rr['id']
+                          for rr in r[ha.DETAILS][ha.REDUNDANCY_ROUTERS]]
+            router_ids.append(r['id'])
+            e_context = context.get_admin_context()
+            routers = self.plugin.get_sync_data_ext(e_context, router_ids)
+            self.assertEqual(len(router_ids), len(routers))
+            correct_routes = sorted(routes, key=utils.safe_sort_key)
+            for router in routers:
+                self.assertEqual(
+                    sorted(router['routes'], key=utils.safe_sort_key),
+                    correct_routes)
+            self._routes_update_cleanup(p['id'], None, r['id'], r['id'], [])
+
+    def test_l3_cfg_agent_query_ha_rdcy_router_routes_include_user_vsbl_router(
+            self):
+        routes1 = [{'destination': '135.207.0.0/16', 'nexthop': '10.0.1.3'},
+                   {'destination': '12.0.0.0/8', 'nexthop': '10.0.1.4'},
+                   {'destination': '141.212.0.0/16', 'nexthop': '10.0.1.5'}]
+        routes2 = [{'destination': '155.210.0.0/28', 'nexthop': '11.0.1.7'},
+                   {'destination': '130.238.5.0/24', 'nexthop': '11.0.1.7'}]
+        with self.router() as router,\
+                self.subnet(cidr='10.0.1.0/24') as subnet1,\
+                self.subnet(cidr='11.0.1.0/24') as subnet2,\
+                self.port(subnet=subnet1) as port1,\
+                self.port(subnet=subnet2) as port2:
+            r = router['router']
+            p1 = port1['port']
+            p2 = port2['port']
+            self._routes_update_prepare(r['id'], None, p1['id'], r['id'],
+                                        routes1)
+            rr1_id = r[ha.DETAILS][ha.REDUNDANCY_ROUTERS][0]['id']
+            self._routes_update_prepare(r['id'], None, p2['id'], rr1_id,
+                                        routes2)
+            router_ids = [r['id'],
+                          r[ha.DETAILS][ha.REDUNDANCY_ROUTERS][1]['id']]
+            e_context = context.get_admin_context()
+            routers = self.plugin.get_sync_data_ext(e_context, router_ids)
+            self.assertEqual(len(router_ids), len(routers))
+            correct_routes1 = sorted(routes1, key=utils.safe_sort_key)
+            for router in routers:
+                self.assertEqual(
+                    sorted(router['routes'], key=utils.safe_sort_key),
+                    correct_routes1)
+            routers = self.plugin.get_sync_data_ext(e_context, [rr1_id])
+            routes1.extend(routes2)
+            self.assertEqual(
+                sorted(routers[0]['routes'], key=utils.safe_sort_key),
+                sorted(routes1, key=utils.safe_sort_key))
+            self._routes_update_cleanup(p2['id'], None, r['id'], rr1_id, [])
+            self._routes_update_cleanup(p1['id'], None, r['id'], r['id'], [])
 
     def test_l3_cfg_agent_query_ha_router_with_fips(self):
         with self.subnet(cidr='10.0.1.0/24') as s_ext,\
@@ -1605,12 +1688,8 @@ class L3CfgAgentHARouterApplianceTestCase(
                     fip = fl_ip['floatingip']
                     routers = self._list('routers')['routers']
                     fip_spec = {'floatingip': {'port_id': private_port['id']}}
-                    updated_fip = self._update('floatingips', fip['id'],
-                                               fip_spec)
+                    self._update('floatingips', fip['id'], fip_spec)
         self._validate_ha_fip_ops(notifyApi, routers, 'update_floatingip')
 
     def test_ha_floatingip_update_cfg_agent(self):
         self._test_notify_op_agent(self._test_ha_floatingip_update_cfg_agent)
-
-#TODO(bobmel): Add tests to ensure get_router_sync_data_ext for redundancy
-# routers includes floatingip and static routes from user visible router
