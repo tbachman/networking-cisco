@@ -80,8 +80,8 @@ def upgrade():
                       sa.Column('template_id', sa.String(length=36),
                                 nullable=False))
         op.create_foreign_key('cisco_hosting_devices_ibfk_3',
-                              source='cisco_hosting_devices',
-                              referent='cisco_hosting_device_templates',
+                              source_table='cisco_hosting_devices',
+                              referent_table='cisco_hosting_device_templates',
                               local_cols=['template_id'], remote_cols=['id'])
         op.create_index('template_id', 'cisco_hosting_devices',
                         ['template_id'])

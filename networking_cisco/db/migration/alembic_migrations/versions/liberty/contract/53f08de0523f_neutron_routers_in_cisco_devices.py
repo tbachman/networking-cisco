@@ -75,9 +75,9 @@ def upgrade():
                               remote_cols=['id'],
                               ondelete='CASCADE')
         op.create_primary_key(
-            name='pk_cisco_router_mappings',
+            constraint_name='pk_cisco_router_mappings',
             table_name='cisco_router_mappings',
-            cols=['router_id', 'router_type_id'])
+            columns=['router_id', 'router_type_id'])
         op.add_column('cisco_router_mappings',
                       sa.Column('inflated_slot_need', sa.Integer(),
                                 autoincrement=False, nullable=True,
