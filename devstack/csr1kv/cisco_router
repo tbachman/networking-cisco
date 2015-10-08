@@ -18,8 +18,10 @@ function neutron_cisco_router_configure_common() {
     Q_L3_ENABLED=True
     Q_L3_ROUTER_PER_TENANT=True
 
-    _neutron_service_plugin_class_add $CISCO_ROUTER_PLUGIN
+    _clear_L3_plugin
+
     _neutron_service_plugin_class_add $CISCO_DEVMGR_PLUGIN
+    _neutron_service_plugin_class_add $CISCO_ROUTER_PLUGIN
 
     mkdir -p $PLUGIN_CONFIG_DIR
 
@@ -57,6 +59,16 @@ function _inject_deployer_config() {
     if [[ -f $DEVMGR_INJECT_FILE ]]; then
         cat $DEVMGR_INJECT_FILE >> $Q_CISCO_DEVMGR_PLUGIN_CONF_FILE
     fi
+}
+
+
+function _clear_L3_plugin() {
+  if [[  ,${Q_SERVICE_PLUGIN_CLASSES}, =~ ,${ML2_L3_PLUGIN}, ]]; then
+  echo "Found L3 plugin configured..Proceeding to delete it"
+
+  Q_SERVICE_PLUGIN_CLASSES=${Q_SERVICE_PLUGIN_CLASSES##$ML2_L3_PLUGIN}
+  echo "service plugins="$Q_SERVICE_PLUGIN_CLASSES
+fi
 }
 
 # Restore xtrace
