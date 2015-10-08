@@ -85,7 +85,7 @@ function configure_cisco_csr_router {
 
 function start_cisco_csr_router {
     if [[ "$count" == 0 ]];then
-        if [[ "Q_CISCO_ASR1K_ENABLED" == "True" ]]; then
+        if [[ "$Q_CISCO_ASR1K_ENABLED" == "True" ]]; then
             setup_for_asr1k
         else
             setup_for_csr1kv
