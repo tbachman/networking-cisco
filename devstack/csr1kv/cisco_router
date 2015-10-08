@@ -23,14 +23,17 @@ function neutron_cisco_router_configure_common() {
 
     mkdir -p $PLUGIN_CONFIG_DIR
 
-    #Q_CISCO_ROUTER_PLUGIN_CONF_FILE=$NET_CISCO_CONF_DIR/$CISCO_ROUTER_PLUGIN_CONF_FILE
-    #Q_CISCO_DEVMGR_PLUGIN_CONF_FILE=$NET_CISCO_CONF_DIR/$CISCO_DEVMGR_PLUGIN_CONF_FILE
-
     cp $NET_CISCO_CONF_DIR/$CISCO_ROUTER_PLUGIN_CONF_FILE $PLUGIN_CONFIG_DIR/
     cp $NET_CISCO_CONF_DIR/$CISCO_DEVMGR_PLUGIN_CONF_FILE $PLUGIN_CONFIG_DIR/
 
-    Q_PLUGIN_EXTRA_CONF_FILES=(${Q_PLUGIN_EXTRA_CONF_FILES[@]} $PLUGIN_CONFIG_DIR/CISCO_ROUTER_PLUGIN_CONF_FILE)
-    Q_PLUGIN_EXTRA_CONF_FILES=(${Q_PLUGIN_EXTRA_CONF_FILES[@]} $PLUGIN_CONFIG_DIR/CISCO_DEVMGR_PLUGIN_CONF_FILE)
+    Q_CISCO_ROUTER_PLUGIN_CONF_FILE=$PLUGIN_CONFIG_DIR/$CISCO_ROUTER_PLUGIN_CONF_FILE
+    Q_CISCO_DEVMGR_PLUGIN_CONF_FILE=$PLUGIN_CONFIG_DIR/$CISCO_DEVMGR_PLUGIN_CONF_FILE
+
+    Q_PLUGIN_EXTRA_CONF_FILES=(${Q_PLUGIN_EXTRA_CONF_FILES[@]} $Q_CISCO_ROUTER_PLUGIN_CONF_FILE)
+    Q_PLUGIN_EXTRA_CONF_FILES=(${Q_PLUGIN_EXTRA_CONF_FILES[@]} $Q_CISCO_DEVMGR_PLUGIN_CONF_FILE)
+
+    _inject_deployer_config
+
  }
 
 function neutron_cisco_router_configure_driver() {
@@ -39,6 +42,21 @@ function neutron_cisco_router_configure_driver() {
 
 function neutron_cisco_router_stop() {
     :
+}
+
+# inject any deployer provided configurations
+function _inject_deployer_config() {
+    ROUTER_INJECT_FILE=$TOP_DIR/cisco_router_plugin.inject
+    # inject any deployer provided configurations
+    if [[ -f $ROUTER_INJECT_FILE ]]; then
+        cat $ROUTER_INJECT_FILE >> $Q_CISCO_ROUTER_PLUGIN_CONF_FILE
+    fi
+
+    # Inject device manager configs
+    DEVMGR_INJECT_FILE=$TOP_DIR/cisco_device_manager_plugin.inject
+    if [[ -f $DEVMGR_INJECT_FILE ]]; then
+        cat $DEVMGR_INJECT_FILE >> $Q_CISCO_DEVMGR_PLUGIN_CONF_FILE
+    fi
 }
 
 # Restore xtrace
