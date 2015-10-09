@@ -7,6 +7,7 @@
 osn=${1:-neutron}
 plugin=${2:-n1kv}
 localrc=$3
+TOP_DIR=$(cd $(dirname $localrc) && pwd)
 net_cisco=${4:-networking-cisco}
 
 

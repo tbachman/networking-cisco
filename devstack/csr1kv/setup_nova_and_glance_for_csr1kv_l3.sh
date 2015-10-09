@@ -8,6 +8,7 @@ adminUser=${1:-neutron}
 osn=$adminUser
 plugin=${2:-n1kv}
 localrc=$3
+TOP_DIR=$(cd $(dirname $localrc) && pwd)
 mysql_user=$4
 mysql_password=$5
 
