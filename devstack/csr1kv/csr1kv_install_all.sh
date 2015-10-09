@@ -44,20 +44,20 @@ CREATE_TEST_NETWORKS=$(trueorfalse "False" $Q_CISCO_CREATE_TEST_NETWORKS)
 if [[ "$Q_CISCO_ASR1K_ENABLED" == "True" ]]; then
     source ${TOP_DIR}/openrc admin demo
     echo "***************** Setting up Keystone for ASR1k *****************"
-    pause
+    #pause
     ./setup_keystone_for_csr1kv_l3.sh $osn
 else
     source ${TOP_DIR}/openrc admin demo
     echo "***************** Setting up Keystone for CSR1kv *****************"
     ./setup_keystone_for_csr1kv_l3.sh $osn
-    pause
+#    pause
     source ${TOP_DIR}/openrc $osn L3AdminTenant
     echo "***************** Setting up Nova & Glance for CSR1kv *****************"
     ./setup_nova_and_glance_for_csr1kv_l3.sh $osn $plugin $localrc $mysql_user $mysql_password
-    pause
+#    pause
     echo "***************** Setting up Neutron for CSR1kv *****************"
     ./setup_neutron_for_csr1kv_l3.sh $osn $plugin $localrc
-    pause
+#    pause
     echo "***************** Setting up CfgAgent connectivity *****************"
     ./setup_l3cfgagent_networking.sh $osn $plugin $localrc $mgmt_ip
 
