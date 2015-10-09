@@ -11,7 +11,7 @@ TOP_DIR=$(cd $(dirname $localrc) && pwd)
 mysql_user=$4
 mysql_password=$5
 mgmt_ip=$6
-Q_CISCO_ASR1K_ENABLED=${7:-"True" }
+Q_CISCO_ASR1K_ENABLED=${7:-True }
 
 # Adopted from Devstack scripts:
 # Normalize config values to True or False

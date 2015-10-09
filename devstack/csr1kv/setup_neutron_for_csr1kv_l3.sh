@@ -29,7 +29,10 @@ vsmIP=${Q_CISCO_PLUGIN_VSM_IP:-192.168.168.2}
 vsmUsername=${Q_CISCO_PLUGIN_VSM_USERNAME:-admin}
 vsmPassword=${Q_CISCO_PLUGIN_VSM_PASSWORD:-Sfish123}
 
+base_dir=/opt/stack/data/$net_cisco/cisco
+templates_dir=$base_dir/templates
 template_name=csr1kv_cfg_template
+template_file=$templates_dir/$template_name
 template_file_src=$DIR_CISCO/networking_cisco/plugins/cisco/device_manager/configdrive_templates/$template_name
 osnMgmtNwName=osn_mgmt_nw
 mgmtSecGrp=mgmt_sec_grp
