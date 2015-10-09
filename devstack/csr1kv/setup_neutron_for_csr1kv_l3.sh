@@ -30,6 +30,7 @@ vsmUsername=${Q_CISCO_PLUGIN_VSM_USERNAME:-admin}
 vsmPassword=${Q_CISCO_PLUGIN_VSM_PASSWORD:-Sfish123}
 
 base_dir=/opt/stack/data/$net_cisco/cisco
+DIR_CISCO=/opt/stack/networking-cisco
 templates_dir=$base_dir/templates
 template_name=csr1kv_cfg_template
 template_file=$templates_dir/$template_name
