@@ -1,13 +1,6 @@
 #!/bin/bash
 
-# Make sure you that you have sourced openrc for a user
-# with admin (privilege) rights before you run this script.
-# See README.TXT for further details.
-
-# Default values
-# --------------
-# adminUser is same as name of Openstack network service,
-# it should be 'neutron'.
+## Users, roles, tenants ##
 adminUser=${1:-neutron}
 adminRole=admin
 l3AdminTenant=L3AdminTenant
