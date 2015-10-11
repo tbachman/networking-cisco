@@ -18,7 +18,6 @@ import sys
 import mock
 import netaddr
 from neutron.common import constants as l3_constants
-from networking_cisco.plugins.cisco.common import cisco_constants
 from neutron.tests import base
 
 from networking_cisco.plugins.cisco.cfg_agent.device_drivers.asr1k import (
@@ -31,6 +30,7 @@ from networking_cisco.plugins.cisco.cfg_agent.device_drivers.csr1kv import (
     iosxe_routing_driver as iosxe_driver)
 from networking_cisco.plugins.cisco.cfg_agent.service_helpers import (
     routing_svc_helper)
+from networking_cisco.plugins.cisco.common import cisco_constants
 
 from oslo_utils import uuidutils
 
