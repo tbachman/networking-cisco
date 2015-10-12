@@ -62,8 +62,8 @@ def upgrade():
                       sa.Column('router_type_id', sa.String(length=36),
                                 nullable=False))
         op.create_foreign_key('cisco_router_mappings_ibfk_3',
-                              source='cisco_router_mappings',
-                              referent='cisco_router_types',
+                              source_table='cisco_router_mappings',
+                              referent_table='cisco_router_types',
                               local_cols=['router_type_id'],
                               remote_cols=['id'])
         op.drop_constraint('cisco_router_mappings_ibfk_2',
@@ -71,8 +71,8 @@ def upgrade():
         op.drop_constraint('cisco_router_mappings_ibfk_2',
                            'cisco_router_mappings', type_='primary')
         op.create_foreign_key('cisco_router_mappings_ibfk_2',
-                              source='cisco_router_mappings',
-                              referent='routers',
+                              source_table='cisco_router_mappings',
+                              referent_table='routers',
                               local_cols=['router_id'],
                               remote_cols=['id'],
                               ondelete='CASCADE')
