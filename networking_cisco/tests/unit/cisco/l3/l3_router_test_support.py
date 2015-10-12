@@ -23,6 +23,7 @@ from networking_cisco.plugins.cisco.db.scheduler import (
 from networking_cisco.plugins.cisco.extensions import routerhostingdevice
 from networking_cisco.plugins.cisco.extensions import routerrole
 from networking_cisco.plugins.cisco.extensions import routertype
+from networking_cisco.tests import base
 
 from neutron.api.v2 import attributes
 from neutron.common import test_lib
@@ -41,6 +42,8 @@ extensions_path = networking_cisco.plugins.__path__[0] + '/cisco/extensions'
 
 class L3RouterTestSupportMixin(object):
 
+    _is_ha_tests = False
+
     def _mock_get_routertype_scheduler_always_none(self):
         self.get_routertype_scheduler_fcn_p = mock.patch(
             'networking_cisco.plugins.cisco.db.l3.l3_router_appliance_db.'
@@ -55,9 +58,14 @@ class L3RouterTestSupportMixin(object):
 
     def _add_router_plugin_ini_file(self):
         # includes config file for router service plugin
-        cfg_file = (
-            networking_cisco.__path__[0] +
-            '/tests/unit/cisco/etc/cisco_router_plugin.ini')
+        if hasattr(self, '_is_ha_tests') and self._is_ha_tests is True:
+            cfg_file = (
+                base.ROOTDIR +
+                '/unit/cisco/etc/ha/cisco_router_plugin.ini')
+        else:
+            cfg_file = (
+                base.ROOTDIR +
+                '/unit/cisco/etc/cisco_router_plugin.ini')
         if 'config_files' in test_lib.test_config:
             test_lib.test_config['config_files'].append(cfg_file)
         else:

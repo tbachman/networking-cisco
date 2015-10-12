@@ -354,6 +354,7 @@ class Asr1kHARouterTypeDriverTestCase(
 
     # For the HA tests we need more than one hosting device
     router_type = 'ASR1k_Neutron_router'
+    _is_ha_tests = True
 
     def setUp(self, core_plugin=None, l3_plugin=None, dm_plugin=None,
               ext_mgr=None):
@@ -362,7 +363,6 @@ class Asr1kHARouterTypeDriverTestCase(
         if ext_mgr is None:
             ext_mgr = (cisco_test_case.
                        TestHASchedulingL3RouterApplianceExtensionManager())
-        cfg.CONF.set_override('ha_enabled_by_default', True, group='ha')
         cfg.CONF.set_override('default_ha_redundancy_level', 1, group='ha')
 
         super(Asr1kHARouterTypeDriverTestCase, self).setUp(
@@ -686,6 +686,8 @@ class L3CfgAgentAsr1kRouterTypeDriverTestCase(
         cisco_test_case.L3RoutertypeAwareHostingDeviceSchedulerTestCaseBase,
         cisco_ha_test.HAL3RouterTestsMixin):
 
+    _is_ha_tests = True
+
     def setUp(self, core_plugin=None, l3_plugin=None, dm_plugin=None,
               ext_mgr=None):
         if l3_plugin is None:
@@ -693,7 +695,6 @@ class L3CfgAgentAsr1kRouterTypeDriverTestCase(
         if ext_mgr is None:
             ext_mgr = (cisco_test_case.
                        TestHASchedulingL3RouterApplianceExtensionManager())
-        cfg.CONF.set_override('ha_enabled_by_default', True, group='ha')
         cfg.CONF.set_override('default_ha_redundancy_level', 1, group='ha')
 
         super(L3CfgAgentAsr1kRouterTypeDriverTestCase, self).setUp(
