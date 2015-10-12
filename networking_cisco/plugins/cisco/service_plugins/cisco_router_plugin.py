@@ -17,7 +17,7 @@ from oslo_utils import importutils
 
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
-from neutron.common import constants as l3_constants
+from neutron.common import constants as neutron_constants
 from neutron.common import rpc as n_rpc
 from neutron.common import topics
 from neutron.db import common_db_mixin
@@ -86,7 +86,7 @@ class CiscoRouterPlugin(common_db_mixin.CommonDbMixin,
         # RPC support
         self.topic = topics.L3PLUGIN
         self.conn = n_rpc.create_connection(new=True)
-        self.agent_notifiers[l3_constants.AGENT_TYPE_L3] = (
+        self.agent_notifiers[neutron_constants.AGENT_TYPE_L3] = (
             l3_rpc_agent_api.L3AgentNotifyAPI())
         self.agent_notifiers[cisco_constants.AGENT_TYPE_L3_CFG] = (
             l3_router_rpc_cfg_agent_api.L3RouterCfgAgentNotifyAPI(self))
@@ -118,7 +118,7 @@ class CiscoRouterPlugin(common_db_mixin.CommonDbMixin,
         """
         return super(CiscoRouterPlugin, self).create_floatingip(
             context, floatingip,
-            initial_status=l3_constants.FLOATINGIP_STATUS_DOWN)
+            initial_status=neutron_constants.FLOATINGIP_STATUS_DOWN)
 
     @property
     def _core_plugin(self):
