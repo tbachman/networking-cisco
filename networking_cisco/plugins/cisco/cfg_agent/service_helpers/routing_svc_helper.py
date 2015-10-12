@@ -35,10 +35,12 @@ from networking_cisco.plugins.cisco.cfg_agent import device_status
 from networking_cisco.plugins.cisco.common import (cisco_constants as
                                                    c_constants)
 from networking_cisco.plugins.cisco.extensions import ha
+from networking_cisco.plugins.cisco.extensions import routerrole
 
 LOG = logging.getLogger(__name__)
 
 N_ROUTER_PREFIX = 'nrouter-'
+ROUTER_ROLE_ATTR = routerrole.ROUTER_ROLE_ATTR
 
 
 class RouterInfo(object):
@@ -393,7 +395,7 @@ class RoutingServiceHelper(object):
         """
         #ToDo(Hareesh): Simplify if possible
         for r in routers:
-            if r['role'] == c_constants.ROUTER_ROLE_GLOBAL:
+            if r[ROUTER_ROLE_ATTR] == c_constants.ROUTER_ROLE_GLOBAL:
                 routers.remove(r)
                 routers.append(r)
 
@@ -653,12 +655,13 @@ class RoutingServiceHelper(object):
         """
         ri = RouterInfo(router_id, router)
         driver = self._drivermgr.set_driver(router)
-        if router['role'] in [c_constants.ROUTER_ROLE_GLOBAL,
-                              c_constants.ROUTER_ROLE_LOGICAL_GLOBAL]:
+        if router[ROUTER_ROLE_ATTR] in [
+            c_constants.ROUTER_ROLE_GLOBAL,
+            c_constants.ROUTER_ROLE_LOGICAL_GLOBAL]:
             # No need to create a vrf for Global or logical global routers
             LOG.debug("Skipping router_added device processing for %(id)s as "
                       "its role is %(role)s",
-                      {'id': router_id, 'role': router['role']})
+                      {'id': router_id, 'role': router[ROUTER_ROLE_ATTR]})
         else:
             driver.router_added(ri)
         self.router_info[router_id] = ri
