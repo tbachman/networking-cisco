@@ -649,8 +649,25 @@ class IosXeRoutingDriver(devicedriver_api.RoutingDriverBase):
                   'snip': snippet,
                   'conf': conf_str,
                   'caller': self.caller_name()})
-        rpc_obj = conn.edit_config(target='running', config=conf_str)
-        self._check_response(rpc_obj, snippet, conf_str=conf_str)
+        try:
+            rpc_obj = conn.edit_config(target='running', config=conf_str)
+            self._check_response(rpc_obj, snippet, conf_str=conf_str)
+        except Exception:
+            # Here we catch all exceptions caused by REMOVE_/DELETE_ configs
+            # to avoid config agent to get stuck once it hits this condition.
+            # This is needed since the current ncclient version (0.4.2)
+            # generates an exception when an attempt to configure the device
+            # fails by the device (ASR1K router) but it doesn't provide any
+            # details about the error message that the device reported.
+            # With ncclient 0.4.4 version and onwards the exception returns
+            # also the proper error. Hence this code can be changed when the
+            # ncclient version is increased.
+            if re.search(r"REMOVE_|DELETE_", snippet):
+                LOG.error(_LE("Pass exception for %s"), snippet)
+                pass
+            else:
+                raise
+
 
     @staticmethod
     def _check_response(rpc_obj, snippet_name, conf_str=None):
