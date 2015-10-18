@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
-
 from oslo_config import cfg
 from oslo_utils import uuidutils
 
@@ -198,10 +196,10 @@ class Asr1kRouterTypeDriverTestCase(
                                       cidr='10.0.1.0/24', tenant_id=tenant_id)
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, set_context=set_context),
-                self.router(name='router2', tenant_id=tenant_id,
-                            set_context=set_context)) as (router1, router2):
+            with self.router(tenant_id=tenant_id,
+                             set_context=set_context) as router1,\
+                    self.router(name='router2', tenant_id=tenant_id,
+                                set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 # backlog processing will trigger one routers_updated
@@ -235,12 +233,12 @@ class Asr1kRouterTypeDriverTestCase(
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
             ext_gw = {'network_id': s['subnet']['network_id']}
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, external_gateway_info=ext_gw,
-                            set_context=set_context),
-                self.router(name='router2', tenant_id=tenant_id,
-                            external_gateway_info=ext_gw,
-                            set_context=set_context)) as (router1, router2):
+            with self.router(tenant_id=tenant_id,
+                             external_gateway_info=ext_gw,
+                             set_context=set_context) as router1,\
+                    self.router(name='router2', tenant_id=tenant_id,
+                                external_gateway_info=ext_gw,
+                                set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 # backlog processing will trigger one routers_updated
@@ -292,12 +290,12 @@ class Asr1kRouterTypeDriverTestCase(
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
             ext_gw = {'network_id': s['subnet']['network_id']}
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, external_gateway_info=ext_gw,
-                            set_context=set_context),
+
+            with self.router(tenant_id=tenant_id, external_gateway_info=ext_gw,
+                         set_context=set_context) as router1,\
                 self.router(name='router2', tenant_id=tenant_id,
                             external_gateway_info=ext_gw,
-                            set_context=set_context)) as (router1, router2):
+                            set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 self.plugin._process_backlogged_routers()
@@ -324,11 +322,11 @@ class Asr1kRouterTypeDriverTestCase(
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
             ext_gw = {'network_id': s['subnet']['network_id']}
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, set_context=set_context),
-                self.router(name='router2', tenant_id=tenant_id,
-                            external_gateway_info=ext_gw,
-                            set_context=set_context)) as (router1, router2):
+            with self.router(tenant_id=tenant_id,
+                             set_context=set_context) as router1,\
+                    self.router(name='router2', tenant_id=tenant_id,
+                                external_gateway_info=ext_gw,
+                                set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 self.plugin._process_backlogged_routers()
@@ -562,10 +560,10 @@ class Asr1kHARouterTypeDriverTestCase(
                                       cidr='10.0.1.0/24', tenant_id=tenant_id)
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, set_context=set_context),
-                self.router(name='router2', tenant_id=tenant_id,
-                            set_context=set_context)) as (router1, router2):
+            with self.router(tenant_id=tenant_id,
+                             set_context=set_context) as router1,\
+                    self.router(name='router2', tenant_id=tenant_id,
+                                set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 # backlog processing to schedule the routers
@@ -593,12 +591,11 @@ class Asr1kHARouterTypeDriverTestCase(
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
             ext_gw = {'network_id': s['subnet']['network_id']}
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, external_gateway_info=ext_gw,
-                            set_context=set_context),
-                self.router(name='router2', tenant_id=tenant_id,
-                            external_gateway_info=ext_gw,
-                            set_context=set_context)) as (router1, router2):
+            with self.router(tenant_id=tenant_id, external_gateway_info=ext_gw,
+                             set_context=set_context) as router1,\
+                    self.router(name='router2', tenant_id=tenant_id,
+                                external_gateway_info=ext_gw,
+                                set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 # make sure we have only two eligible hosting devices
@@ -626,12 +623,11 @@ class Asr1kHARouterTypeDriverTestCase(
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
             ext_gw = {'network_id': s['subnet']['network_id']}
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, external_gateway_info=ext_gw,
-                            set_context=set_context),
-                self.router(name='router2', tenant_id=tenant_id,
-                            external_gateway_info=ext_gw,
-                            set_context=set_context)) as (router1, router2):
+            with self.router(tenant_id=tenant_id, external_gateway_info=ext_gw,
+                             set_context=set_context) as router1,\
+                    self.router(name='router2', tenant_id=tenant_id,
+                                external_gateway_info=ext_gw,
+                                set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 # make sure we have only two eligible hosting devices
@@ -658,11 +654,11 @@ class Asr1kHARouterTypeDriverTestCase(
             s = self.deserialize(self.fmt, res)
             self._set_net_external(s['subnet']['network_id'])
             ext_gw = {'network_id': s['subnet']['network_id']}
-            with contextlib.nested(
-                self.router(tenant_id=tenant_id, set_context=set_context),
-                self.router(name='router2', tenant_id=tenant_id,
-                            external_gateway_info=ext_gw,
-                            set_context=set_context)) as (router1, router2):
+            with self.router(tenant_id=tenant_id,
+                             set_context=set_context) as router1,\
+                    self.router(name='router2', tenant_id=tenant_id,
+                                external_gateway_info=ext_gw,
+                                set_context=set_context) as router2:
                 r1 = router1['router']
                 r2 = router2['router']
                 # make sure we have only two eligible hosting devices

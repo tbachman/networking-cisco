@@ -668,7 +668,6 @@ class IosXeRoutingDriver(devicedriver_api.RoutingDriverBase):
             else:
                 raise
 
-
     @staticmethod
     def _check_response(rpc_obj, snippet_name, conf_str=None):
         """This function checks the rpc response object for status.

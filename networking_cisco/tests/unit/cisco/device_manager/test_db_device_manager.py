@@ -925,34 +925,34 @@ class TestDeviceManagerDBPlugin(
             creds_id = (DEFAULT_CREDENTIALS_ID if define_credentials is True
                         else 'non_existent_id')
             credentials = {'user_name': 'bob', 'password': 'tooEasy'}
-            with contextlib.nested(mock.patch.dict(
-                    self.plugin._credentials, {creds_id: credentials}),
-                    self.port(subnet=self._mgmt_subnet, no_delete=True),
-                    self.port(subnet=self._mgmt_subnet, no_delete=True)) as (
-                    creds_dict, mgmt_port1, mgmt_port2):
-                with contextlib.nested(
-                        self.hosting_device(
-                            template_id=hdt_id,
-                            management_port_id=mgmt_port1['port']['id'],
-                            auto_delete=True,
-                            no_delete=True),
-                        self.hosting_device(
-                            template_id=hdt_id,
-                            management_port_id=mgmt_port2['port']['id'],
-                            auto_delete=True,
-                            no_delete=True)):
-                        context = self._get_test_context(is_admin=True)
-                        template = self._devmgr._get_hosting_device_template(
-                            context, hdt_id)
-                        self._devmgr._gt_pool = mock.MagicMock()
-                        self._devmgr._gt_pool.spawn_n.side_effect = (
-                            lambda fcn, ctx, tmplt: fcn(ctx, tmplt))
-                        self._devmgr._dispatch_pool_maintenance_job(
-                            template)
-                        result_hds = self._list(
-                            'hosting_devices')['hosting_devices']
-                        self.assertEqual(len(result_hds) * slot_capacity,
-                                         expected)
+            with mock.patch.dict(
+                    self.plugin._credentials,
+                    {creds_id: credentials}),\
+                    self.port(subnet=self._mgmt_subnet,
+                              no_delete=True) as mgmt_port1,\
+                    self.port(subnet=self._mgmt_subnet,
+                              no_delete=True) as mgmt_port2:
+                with self.hosting_device(
+                        template_id=hdt_id,
+                        management_port_id=mgmt_port1['port']['id'],
+                        auto_delete=True, no_delete=True),\
+                     self.hosting_device(
+                         template_id=hdt_id,
+                         management_port_id=mgmt_port2['port']['id'],
+                         auto_delete=True, no_delete=True):
+                    context = self._get_test_context(is_admin=True)
+                    template = self._devmgr._get_hosting_device_template(
+                        context, hdt_id)
+
+                    self._devmgr._gt_pool = mock.MagicMock()
+                    self._devmgr._gt_pool.spawn_n.side_effect = (
+                        lambda fcn, ctx, tmplt: fcn(ctx, tmplt))
+                    self._devmgr._dispatch_pool_maintenance_job(
+                        template)
+                    result_hds = self._list(
+                        'hosting_devices')['hosting_devices']
+                    self.assertEqual(len(result_hds) * slot_capacity,
+                                     expected)
             self._devmgr.delete_all_hosting_devices(context, True)
 
     # hosting device pool maintenance tests

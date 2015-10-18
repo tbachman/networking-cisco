@@ -21,6 +21,7 @@ from oslotest import base
 
 ROOTDIR = os.path.dirname(__file__)
 
+
 class TestCase(base.BaseTestCase):
 
     """Test case base class for all unit tests."""
