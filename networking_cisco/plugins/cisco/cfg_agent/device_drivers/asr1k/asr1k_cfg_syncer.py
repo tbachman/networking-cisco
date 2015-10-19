@@ -266,9 +266,7 @@ class ConfigSyncer(object):
             router_id = match_obj.group(1)
             LOG.info(_LI("    First 6 digits of router ID: %s\n"),
                         (router_id))
-            if (parsed_obj.re_search_children(VRF_ADDR_FAMILY_V4) and
-                parsed_obj.re_search_children(VRF_ADDR_FAMILY_V6)): 
-                rconf_ids.append(router_id)
+            rconf_ids.append(router_id)
 
         return rconf_ids
 
@@ -279,7 +277,7 @@ class ConfigSyncer(object):
         source_set = set(ostk_router_ids)
         dest_set = set(rconf_ids)
 
-        add_set = source_set.difference(dest_set)
+        #add_set = source_set.difference(dest_set)
         del_set = dest_set.difference(source_set)
 
         LOG.info(_LI("VRF DB set: %s"), (source_set))
@@ -294,10 +292,6 @@ class ConfigSyncer(object):
             for vrf_name in invalid_vrfs:
                 confstr = asr_snippets.REMOVE_VRF_DEFN % vrf_name
                 conn.edit_config(target='running', config=confstr)
-
-        if router_id in add_set:
-            vrf_name = "nrouter-%s-%s" % (router_id))
-            self.existing_cfg_dict['vrfs'][vrf_name] = True
 
         return invalid_vrfs
 
