@@ -130,17 +130,22 @@ class CiscoRoutingPluginApi(object):
 
         @param context: contains user information
         @param router_id: id of router associated with the floatingips
-        @param router_id: dict with floatingip_id as key and status as value
+        @param fip_statuses: dict with floatingip_id as key and status as value
         """
         cctxt = self.client.prepare(version='1.1')
         return cctxt.call(context, 'update_floatingip_statuses_cfg',
                           router_id=router_id, fip_statuses=fip_statuses)
 
     def send_update_port_statuses(self, context, port_ids, status):
-        """Call the pluging to update the port status which updates the DB."""
-        return self.call(context,
-                         self.make_msg('update_port_statuses_cfg',
-                                       port_ids=port_ids, status=status))
+        """Call the pluging to update the port status which updates the DB.
+
+        :param context: contains user information
+        :param port_ids: list of ids of the ports associated with the status
+        :param status: value of the status for the given port list (port_ids)
+        """
+        cctxt = self.client.prepare(version='1.1')
+        return cctxt.call(context, 'update_port_statuses_cfg',
+                          port_ids=port_ids, status=status)
 
 
 class RoutingServiceHelper(object):
@@ -555,7 +560,7 @@ class RoutingServiceHelper(object):
             if ex_gw_port and not ri.ex_gw_port:
                 self._set_subnet_info(ex_gw_port)
                 self._external_gateway_added(ri, ex_gw_port)
-                list_port_ids_up.append(p['id'])
+                list_port_ids_up.append(ex_gw_port['id'])
             elif not ex_gw_port and ri.ex_gw_port:
                 self._external_gateway_removed(ri, ri.ex_gw_port)
 
