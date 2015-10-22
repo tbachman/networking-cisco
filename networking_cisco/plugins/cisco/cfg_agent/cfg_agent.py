@@ -412,8 +412,51 @@ class CiscoCfgAgentWithStateReport(CiscoCfgAgent):
             LOG.exception(_LE("Failed sending agent report!"))
 
 
+def _mock_stuff():
+    import mock
+
+    targets = ['networking_cisco.plugins.cisco.cfg_agent.device_drivers.'
+               'csr1kv.csr1kv_routing_driver.manager',
+               'networking_cisco.plugins.cisco.cfg_agent.device_drivers.'
+               'csr1kv.iosxe_routing_driver.manager']
+    ncc_patchers = []
+    ncclient_mock = mock.MagicMock()
+    ok_xml_obj = mock.MagicMock()
+    ok_xml_obj.xml = "<ok />"
+    ncclient_mock.connect.return_value.edit_config.return_value = ok_xml_obj
+    for target in targets:
+        patcher = mock.patch(target, ncclient_mock)
+        patcher.start()
+        ncc_patchers.append(patcher)
+
+    targets = ['networking_cisco.plugins.cisco.cfg_agent.device_drivers'
+               '.csr1kv.csr1kv_routing_driver.CSR1kvRoutingDriver.'
+               '_get_running_config',
+               'networking_cisco.plugins.cisco.cfg_agent.device_drivers.'
+               'csr1kv.iosxe_routing_driver.IosXeRoutingDriver.'
+               '_get_running_config',
+               'networking_cisco.plugins.cisco.cfg_agent.device_drivers.'
+               'asr1k.asr1k_cfg_syncer.ConfigSyncer.get_running_config',
+               'networking_cisco.plugins.cisco.cfg_agent.device_drivers.asr1k.'
+               'asr1k_cfg_syncer.ConfigSyncer.get_running_config']
+    g_r_c_patchers = []
+    g_r_c_mock = mock.MagicMock(return_value=[""])
+    for target in targets:
+        patcher = mock.patch(target, g_r_c_mock)
+        patcher.start()
+        g_r_c_patchers.append(patcher)
+
+    is_pingable_mock = mock.MagicMock(return_value=True)
+    pingable_patcher = mock.patch(
+        'networking_cisco.plugins.cisco.cfg_agent.device_status._is_pingable',
+        is_pingable_mock)
+    pingable_patcher.start()
+
+
 def main(manager='networking_cisco.plugins.cisco.cfg_agent.'
                  'cfg_agent.CiscoCfgAgentWithStateReport'):
+    #NOTE(bobmel): call _mock_stuff() to run config agent with fake ncclient
+    #_mock_stuff()
     conf = cfg.CONF
     conf.register_opts(CiscoCfgAgent.OPTS, "cfg_agent")
     config.register_agent_state_opts_helper(conf)
