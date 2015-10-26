@@ -14,6 +14,9 @@
 
 import logging
 import netaddr
+import pprint
+
+from oslo_config import cfg
 
 from neutron.i18n import _LE, _LI
 from neutron.common import constants
@@ -40,10 +43,64 @@ ROUTER_ROLE_ATTR = routerrole.ROUTER_ROLE_ATTR
 ROUTER_ROLE_HA_REDUNDANCY = cisco_constants.ROUTER_ROLE_HA_REDUNDANCY
 
 
+class ASR1kConfigInfo(object):
+    """ASR1k Driver Cisco Configuration class."""
+
+    def __init__(self):
+        self.is_multi_region_enabled = False
+        self.my_region_id = None
+        self.other_region_ids = []
+        self._configure_regions()
+
+    def _configure_regions(self):
+        """Create the ASR device cisco dictionary.
+
+        Read data from the cisco_router_plugin.ini device supported sections.
+        """
+        multi_parser = cfg.MultiConfigParser()
+        LOG.debug("conf files =%s" % cfg.CONF.config_file)
+        read_ok = multi_parser.read(cfg.CONF.config_file)
+
+        if len(read_ok) != len(cfg.CONF.config_file):
+            raise cfg.Error(_("Some config files were not parsed properly"))
+
+        # asr_count = 0
+        # (Pdb) print parsed_file
+        # {'router_types': {}, 'ha': {}, 'routing': {}, 'region_ids': {'region_id': ['LRFR001'], 'other_region_ids': ['LRF002,LRF003']}}  # NOQA
+
+        if 'region_ids' in multi_parser.parsed[0]:
+            if 'multi_region_enabled' in \
+                multi_parser.parsed[0]['region_ids']:
+
+                multi_region_enabled_opt = \
+                    multi_parser.parsed[0]['region_ids']['multi_region_enabled'][0]  # NOQA
+
+                self.is_multi_region_enabled = \
+                    multi_region_enabled_opt.lower() == 'true'
+                LOG.debug("is_multi_region_enabled = %s" %
+                          (self.is_multi_region_enabled))
+
+            if self.is_multi_region_enabled and \
+               'region_id' in multi_parser.parsed[0]['region_ids']:
+                self.my_region_id = \
+                    multi_parser.parsed[0]['region_ids']['region_id'][0]
+                LOG.debug("my_region_id = %s" % (self.my_region_id))
+
+            if self.is_multi_region_enabled and \
+               'other_region_ids' in multi_parser.parsed[0]['region_ids']:
+
+                self.other_regions = \
+                    multi_parser.parsed[0]['region_ids']['other_region_ids'][0].split(',')  # NOQA
+
+                LOG.debug("other_region_ids = %s" %
+                          pprint.pformat(self.other_regions))
+
+
 class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
 
     def __init__(self, **device_params):
         super(ASR1kRoutingDriver, self).__init__(**device_params)
+        self._asr_config = ASR1kConfigInfo()
         self._fullsync = False
         self._deployment_id = "zxy"
         self.hosting_device = {'id': device_params.get('id'),
@@ -113,8 +170,21 @@ class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
 
         cfg_syncer = asr1k_cfg_syncer.ConfigSyncer(routers, self, hd)
         cfg_syncer.delete_invalid_cfg()
+        self._asr_config = None
 
     # ============== Internal "preparation" functions  ==============
+    def _get_vrf_name(self, ri):
+        """
+        overloaded method for generating a vrf_name that supports
+        region_id
+        """
+        router_id = ri.router_name()[:self.DEV_NAME_LEN]
+
+        if self._asr_config.is_multi_region_enabled:
+            vrf_name = "%s-%s" % (router_id, self._asr_config.my_region_id)
+        else:
+            vrf_name = router_id
+        return vrf_name
 
     def _get_acl_name_from_vlan(self, vlan):
         return "neutron_acl_%s" % vlan
@@ -194,14 +264,22 @@ class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
 
     def _do_create_sub_interface(self, sub_interface, vlan_id, vrf_name, ip,
                                  mask, is_external=False):
+        if self._asr_config.is_multi_region_enabled:
+            region_id = self._asr_config.my_region_id
+        else:
+            region_id = ''
+
         if is_external is True:
             conf_str = asr1k_snippets.CREATE_SUBINTERFACE_EXTERNAL_WITH_ID % (
-                sub_interface, vlan_id, ip,
+                sub_interface, region_id, vlan_id, ip,
                 mask)
         else:
             conf_str = asr1k_snippets.CREATE_SUBINTERFACE_WITH_ID % (
-                sub_interface, vlan_id,
-                vrf_name, ip, mask)
+                sub_interface,
+                region_id,
+                vlan_id,
+                vrf_name,
+                ip, mask)
         self._edit_running_config(conf_str, 'CREATE_SUBINTERFACE_WITH_ID')
 
     def _create_ext_sub_interface_enable_only(self, sub_interface):

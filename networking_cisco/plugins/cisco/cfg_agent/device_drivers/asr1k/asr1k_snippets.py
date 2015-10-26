@@ -24,7 +24,7 @@ CREATE_SUBINTERFACE_WITH_ID = """
 <config>
         <cli-config-data>
             <cmd>interface %s</cmd>
-            <cmd>description OPENSTACK_NEUTRON_INTF</cmd>
+            <cmd>description OPENSTACK_NEUTRON_%s_INTF</cmd>
             <cmd>encapsulation dot1Q %s</cmd>
             <cmd>vrf forwarding %s</cmd>
             <cmd>ip address %s %s</cmd>
@@ -35,7 +35,7 @@ CREATE_SUBINTERFACE_WITH_ID = """
 # ===================================================
 # Create Subinterface (External. no VRF)
 # $(config)interface GigabitEthernet 2.500
-# $(config)description OPENSTACK_NEUTRON_INTF
+# $(config)description OPENSTACK_NEUTRON_L3FR001_INTF
 # $(config)encapsulation dot1Q 500
 # $(config)ip address 192.168.0.1 255.255.255.0
 # ===================================================
@@ -43,7 +43,7 @@ CREATE_SUBINTERFACE_EXTERNAL_WITH_ID = """
 <config>
         <cli-config-data>
             <cmd>interface %s</cmd>
-            <cmd>description OPENSTACK_NEUTRON_INTF</cmd>
+            <cmd>description OPENSTACK_NEUTRON_%s_INTF</cmd>
             <cmd>encapsulation dot1Q %s</cmd>
             <cmd>ip address %s %s</cmd>
         </cli-config-data>
