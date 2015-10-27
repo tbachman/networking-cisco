@@ -123,7 +123,18 @@ class CiscoCfgAgent(manager.Manager):
                            "a heartbeat against its hosting-devices.  If  "
                            "a device dies and recovers, the agent will then "
                            "trigger a configuration resync.")),
-
+        cfg.BoolOpt('enable_multi_region',
+                    default=False,
+                    help=_("If enabled, the agent will maintain "
+                           "a heartbeat against its hosting-devices.  If  "
+                           "a device dies and recovers, the agent will then "
+                           "trigger a configuration resync.")),
+        cfg.StrOpt('region_id',
+                   default='L3FR001',
+                   help=_("Label to use for this deployments region-id")),
+        cfg.ListOpt('other_region_ids',
+                   default=['L3FR002', 'L3FR003'],
+                   help=_("Label for other region-ids")),
     ]
 
     def __init__(self, host, conf=None):

@@ -53,47 +53,15 @@ class ASR1kConfigInfo(object):
         self._configure_regions()
 
     def _configure_regions(self):
-        """Create the ASR device cisco dictionary.
-
-        Read data from the cisco_router_plugin.ini device supported sections.
         """
-        multi_parser = cfg.MultiConfigParser()
-        LOG.debug("conf files =%s" % cfg.CONF.config_file)
-        read_ok = multi_parser.read(cfg.CONF.config_file)
+        Read data from the cisco_cfg_agent.ini
+        """
+        self.conf = cfg.CONF
+        self.is_multi_region_enabled = self.conf.cfg_agent.enable_multi_region
 
-        if len(read_ok) != len(cfg.CONF.config_file):
-            raise cfg.Error(_("Some config files were not parsed properly"))
-
-        # asr_count = 0
-        # (Pdb) print parsed_file
-        # {'router_types': {}, 'ha': {}, 'routing': {}, 'region_ids': {'region_id': ['LRFR001'], 'other_region_ids': ['LRF002,LRF003']}}  # NOQA
-
-        if 'region_ids' in multi_parser.parsed[0]:
-            if 'multi_region_enabled' in \
-                multi_parser.parsed[0]['region_ids']:
-
-                multi_region_enabled_opt = \
-                    multi_parser.parsed[0]['region_ids']['multi_region_enabled'][0]  # NOQA
-
-                self.is_multi_region_enabled = \
-                    multi_region_enabled_opt.lower() == 'true'
-                LOG.debug("is_multi_region_enabled = %s" %
-                          (self.is_multi_region_enabled))
-
-            if self.is_multi_region_enabled and \
-               'region_id' in multi_parser.parsed[0]['region_ids']:
-                self.my_region_id = \
-                    multi_parser.parsed[0]['region_ids']['region_id'][0]
-                LOG.debug("my_region_id = %s" % (self.my_region_id))
-
-            if self.is_multi_region_enabled and \
-               'other_region_ids' in multi_parser.parsed[0]['region_ids']:
-
-                self.other_regions = \
-                    multi_parser.parsed[0]['region_ids']['other_region_ids'][0].split(',')  # NOQA
-
-                LOG.debug("other_region_ids = %s" %
-                          pprint.pformat(self.other_regions))
+        if self.is_multi_region_enabled:
+            self.my_region_id = self.conf.cfg_agent.region_id
+            self.other_region_ids = self.conf.cfg_agent.other_region_ids
 
 
 class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
