@@ -14,7 +14,6 @@
 
 import logging
 import netaddr
-import pprint
 
 from oslo_config import cfg
 
@@ -62,6 +61,8 @@ class ASR1kConfigInfo(object):
         if self.is_multi_region_enabled:
             self.my_region_id = self.conf.cfg_agent.region_id
             self.other_region_ids = self.conf.cfg_agent.other_region_ids
+            LOG.debug("+++ my_region_id = %s" % (self.my_region_id))
+            LOG.debug("+++ other_region_ids = %s" % (self.other_region_ids))
 
 
 class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
@@ -138,7 +139,6 @@ class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
 
         cfg_syncer = asr1k_cfg_syncer.ConfigSyncer(routers, self, hd)
         cfg_syncer.delete_invalid_cfg()
-        self._asr_config = None
 
     # ============== Internal "preparation" functions  ==============
     def _get_vrf_name(self, ri):

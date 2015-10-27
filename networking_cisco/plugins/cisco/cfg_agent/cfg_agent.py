@@ -124,7 +124,7 @@ class CiscoCfgAgent(manager.Manager):
                            "a device dies and recovers, the agent will then "
                            "trigger a configuration resync.")),
         cfg.BoolOpt('enable_multi_region',
-                    default=False,
+                    default=True,
                     help=_("If enabled, the agent will maintain "
                            "a heartbeat against its hosting-devices.  If  "
                            "a device dies and recovers, the agent will then "
