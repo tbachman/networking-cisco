@@ -137,7 +137,10 @@ class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
 
     def cleanup_invalid_cfg(self, hd, routers):
 
-        cfg_syncer = asr1k_cfg_syncer.ConfigSyncer(routers, self, hd)
+        cfg_syncer = asr1k_cfg_syncer.ConfigSyncer(self._asr_config,
+                                                   routers,
+                                                   self,
+                                                   hd)
         cfg_syncer.delete_invalid_cfg()
 
     # ============== Internal "preparation" functions  ==============
