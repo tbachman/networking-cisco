@@ -119,18 +119,18 @@ class CiscoCfgAgent(manager.Manager):
                    help=_("Path of the routing service helper class.")),
         cfg.BoolOpt('enable_heartbeat',
                     default=True,
-                    help=_("If enabled, the agent will maintain "
-                           "a heartbeat against its hosting-devices.  If  "
-                           "a device dies and recovers, the agent will then "
-                           "trigger a configuration resync.")),
+                    help=_("If enabled, the agent will maintain a heartbeat "
+                           "against its hosting-devices. If a device dies "
+                           "and recovers, the agent will then trigger a "
+                           "configuration resync.")),
 
     ]
 
     def __init__(self, host, conf=None):
         self.conf = conf or cfg.CONF
         self._dev_status = device_status.DeviceStatus()
-        self._dev_status.enable_heartbeat = \
-            self.conf.cfg_agent.enable_heartbeat
+        self._dev_status.enable_heartbeat = (
+            self.conf.cfg_agent.enable_heartbeat)
         self.context = n_context.get_admin_context_without_session()
 
         self._initialize_rpc(host)
@@ -266,7 +266,7 @@ class CiscoCfgAgent(manager.Manager):
                 pass
         except KeyError as e:
             LOG.error(_LE("Invalid payload format for received RPC message "
-                          "`agent_updated`. Error is %(error)s. Payload is "
+                          "agent_updated`. Error is %(error)s. Payload is "
                           "%(payload)s"), {'error': e, 'payload': payload})
 
     def hosting_devices_assigned_to_cfg_agent(self, context, payload):
@@ -278,7 +278,7 @@ class CiscoCfgAgent(manager.Manager):
                 self.routing_service_helper.fullsync = True
         except KeyError as e:
             LOG.error(_LE("Invalid payload format for received RPC message "
-                          "`hosting_devices_assigned_to_cfg_agent`. Error is "
+                          "hosting_devices_assigned_to_cfg_agent`. Error is "
                           "%(error)s. Payload is %(payload)s"),
                       {'error': e, 'payload': payload})
 
@@ -290,7 +290,7 @@ class CiscoCfgAgent(manager.Manager):
                 pass
         except KeyError as e:
             LOG.error(_LE("Invalid payload format for received RPC message "
-                          "`hosting_devices_unassigned_from_cfg_agent`. Error "
+                          "hosting_devices_unassigned_from_cfg_agent`. Error "
                           "is %(error)s. Payload is %(payload)s"),
                       {'error': e, 'payload': payload})
 
@@ -302,7 +302,7 @@ class CiscoCfgAgent(manager.Manager):
                     self.process_services(removed_devices_info=payload)
         except KeyError as e:
             LOG.error(_LE("Invalid payload format for received RPC message "
-                          "`hosting_devices_removed`. Error is %(error)s. "
+                          "hosting_devices_removed`. Error is %(error)s. "
                           "Payload is %(payload)s"), {'error': e,
                                                       'payload': payload})
 
@@ -310,6 +310,23 @@ class CiscoCfgAgent(manager.Manager):
         context = n_context.get_admin_context_without_session()
         res = self.devmgr_rpc.get_hosting_devices_for_agent(context)
         return res
+
+    def get_hosting_device_configuration(self, context, payload):
+        LOG.debug('Processing request to fetching running config')
+        hd_id = payload['hosting_device_id']
+        svc_helper = self.routing_service_helper
+        if hd_id and svc_helper:
+            LOG.debug('Fetching running config for %s' % hd_id)
+            drv = svc_helper.driver_manager.get_driver_for_hosting_device(
+                hd_id)
+            rc = drv.get_configuration()
+            if rc:
+                LOG.debug('Fetched %(chars)d characters long running config '
+                          'for %(hd_id)s' % {'chars': len(rc[0]),
+                                             'hd_id': hd_id})
+                return rc[0]
+        LOG.debug('Unable to get running config')
+        return
 
 
 class CiscoCfgAgentWithStateReport(CiscoCfgAgent):
@@ -439,8 +456,12 @@ def _mock_stuff():
                'asr1k.asr1k_cfg_syncer.ConfigSyncer.get_running_config',
                'networking_cisco.plugins.cisco.cfg_agent.device_drivers.asr1k.'
                'asr1k_cfg_syncer.ConfigSyncer.get_running_config']
+    fake_running_config = ("interface GigabitEthernet1\n"
+                           "ip address 10.0.0.10 255.255.255.255\n"
+                           "ip route 0.0.0.0 0.0.0.0 GigabitEthernet1 "
+                           "10.0.0.1")
     g_r_c_patchers = []
-    g_r_c_mock = mock.MagicMock(return_value=[""])
+    g_r_c_mock = mock.MagicMock(return_value=[fake_running_config])
     for target in targets:
         patcher = mock.patch(target, g_r_c_mock)
         patcher.start()
@@ -455,8 +476,8 @@ def _mock_stuff():
 
 def main(manager='networking_cisco.plugins.cisco.cfg_agent.'
                  'cfg_agent.CiscoCfgAgentWithStateReport'):
-    #NOTE(bobmel): call _mock_stuff() to run config agent with fake ncclient
-    #_mock_stuff()
+    # NOTE(bobmel): call _mock_stuff() to run config agent with fake ncclient
+    _mock_stuff()
     conf = cfg.CONF
     conf.register_opts(CiscoCfgAgent.OPTS, "cfg_agent")
     config.register_agent_state_opts_helper(conf)
