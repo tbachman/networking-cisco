@@ -415,6 +415,14 @@ class ConfigSyncer(object):
             if (self.asr_config_info.is_multi_region_enabled):
                 router_id, region_id, start_ip, end_ip, netmask = \
                     match_obj.group(1, 2, 3, 4, 5)
+
+                if region_id != self.asr_config_info.my_region_id:
+                    if region_id not in self.asr_config_info.other_region_ids:
+                        delete_pool_list.append(pool.text)
+                    else:
+                        # skip because some other deployment owns
+                        # this configuration
+                        continue
             else:
                 router_id, start_ip, end_ip, netmask = \
                     match_obj.group(1, 2, 3, 4)
@@ -495,6 +503,13 @@ class ConfigSyncer(object):
                           'region_id': region_id,
                           'segment_id': segment_id,
                           'next_hop': next_hop})
+                if region_id != self.asr_config_info.my_region_id:
+                    if region_id not in self.asr_config_info.other_region_ids:
+                        delete_route_list.append(route.text)
+                    else:
+                        # skip because some other deployment owns
+                        # this configuration
+                        continue
             else:
                 router_id, segment_id, next_hop = \
                     match_obj.group(1, 2, 3)
@@ -573,6 +588,14 @@ class ConfigSyncer(object):
             if (self.asr_config_info.is_multi_region_enabled):
                 inner_ip, outer_ip, router_id, region_id, \
                     hsrp_num, segment_id = match_obj.group(1, 2, 3, 4, 5, 6)
+
+                if region_id != self.asr_config_info.my_region_id:
+                    if region_id not in self.asr_config_info.other_region_ids:
+                        delete_fip_list.append(snat_rule.text)
+                    else:
+                        # skip because some other deployment owns
+                        # this configuration
+                        continue
             else:
                 inner_ip, outer_ip, router_id, hsrp_num, segment_id = \
                     match_obj.group(1, 2, 3, 4, 5)
@@ -673,6 +696,14 @@ class ConfigSyncer(object):
             if (self.asr_config_info.is_multi_region_enabled):
                 segment_id, pool_router_id, region_id, router_id = \
                     match_obj.group(1, 2, 3, 4)
+
+                if region_id != self.asr_config_info.my_region_id:
+                    if region_id not in self.asr_config_info.other_region_ids:
+                        delete_nat_list.append(nat_rule.text)
+                    else:
+                        # skip because some other deployment owns
+                        # this configuration
+                        continue
             else:
                 segment_id, pool_router_id, router_id = \
                     match_obj.group(1, 2, 3)
@@ -786,6 +817,14 @@ class ConfigSyncer(object):
             if (self.asr_config_info.is_multi_region_enabled):
                 region_id = match_obj.group(1)
                 segment_id = match_obj.group(2)
+
+                if region_id != self.asr_config_info.my_region_id:
+                    if region_id not in self.asr_config_info.other_region_ids:
+                        delete_acl_list.append(acl.text)
+                    else:
+                        # skip because some other deployment owns
+                        # this configuration
+                        continue
             else:
                 segment_id = match_obj.group(1)
             segment_id = int(segment_id)
@@ -1056,6 +1095,15 @@ class ConfigSyncer(object):
                 router_id = match_obj.group(1)
                 if (self.asr_config_info.is_multi_region_enabled):
                     region_id = match_obj.group(2)
+
+                    if region_id != self.asr_config_info.my_region_id:
+                        if region_id not in \
+                         self.asr_config_info.other_region_ids:
+                            pending_delete_list.append(intf)
+                        else:
+                            # skip because some other deployment owns
+                            # this configuration
+                            continue
 
                 if router_id != db_intf["device_id"][0:6]:
                     LOG.info(_LI("Internal network VRF mismatch,"
