@@ -477,7 +477,7 @@ def _mock_stuff():
 def main(manager='networking_cisco.plugins.cisco.cfg_agent.'
                  'cfg_agent.CiscoCfgAgentWithStateReport'):
     # NOTE(bobmel): call _mock_stuff() to run config agent with fake ncclient
-    _mock_stuff()
+    #_mock_stuff()
     conf = cfg.CONF
     conf.register_opts(CiscoCfgAgent.OPTS, "cfg_agent")
     config.register_agent_state_opts_helper(conf)
