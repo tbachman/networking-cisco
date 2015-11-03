@@ -322,9 +322,8 @@ class CiscoCfgAgent(manager.Manager):
             rc = drv.get_configuration()
             if rc:
                 LOG.debug('Fetched %(chars)d characters long running config '
-                          'for %(hd_id)s' % {'chars': len(rc[0]),
-                                             'hd_id': hd_id})
-                return rc[0]
+                          'for %(hd_id)s' % {'chars': len(rc), 'hd_id': hd_id})
+                return rc
         LOG.debug('Unable to get running config')
         return
 
@@ -461,7 +460,7 @@ def _mock_stuff():
                            "ip route 0.0.0.0 0.0.0.0 GigabitEthernet1 "
                            "10.0.0.1")
     g_r_c_patchers = []
-    g_r_c_mock = mock.MagicMock(return_value=[fake_running_config])
+    g_r_c_mock = mock.MagicMock(return_value=fake_running_config)
     for target in targets:
         patcher = mock.patch(target, g_r_c_mock)
         patcher.start()

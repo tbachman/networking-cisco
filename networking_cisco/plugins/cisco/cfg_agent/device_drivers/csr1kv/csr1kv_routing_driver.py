@@ -139,7 +139,7 @@ class CSR1kvRoutingDriver(devicedriver_api.RoutingDriverBase):
         pass
 
     def get_configuration(self):
-        return self._get_running_config()
+        return self._get_running_config(split=False)
 
     ##### Internal Functions  ####
 
@@ -436,7 +436,7 @@ class CSR1kvRoutingDriver(devicedriver_api.RoutingDriverBase):
         LOG.debug("Server capabilities: %s", capabilities)
         return capabilities
 
-    def _get_running_config(self):
+    def _get_running_config(self, split=True):
         """Get the CSR's current running config.
 
         :return: Current IOS running config as multiline string
@@ -446,8 +446,11 @@ class CSR1kvRoutingDriver(devicedriver_api.RoutingDriverBase):
         if config:
             root = ET.fromstring(config._raw)
             running_config = root[0][0]
-            rgx = re.compile("\r*\n+")
-            ioscfg = rgx.split(running_config.text)
+            if split is True:
+                rgx = re.compile("\r*\n+")
+                ioscfg = rgx.split(running_config.text)
+            else:
+                ioscfg = running_config.text
             return ioscfg
 
     def _check_acl(self, acl_no, network, netmask):

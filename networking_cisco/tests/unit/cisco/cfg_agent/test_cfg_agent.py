@@ -144,7 +144,7 @@ class TestCiscoCfgAgentWithStateReporting(base.BaseTestCase):
         drv = drv_mgr.get_driver_for_hosting_device.return_value
         fake_running_config = 'a fake running config'
         drv.get_configuration = mock.MagicMock(
-            return_value=[fake_running_config])
+            return_value=fake_running_config)
         hd_id = 'a_hd_id'
         payload = {'hosting_device_id': hd_id}
         agent = cfg_agent.CiscoCfgAgentWithStateReport(HOSTNAME, self.conf)
@@ -160,7 +160,7 @@ class TestCiscoCfgAgentWithStateReporting(base.BaseTestCase):
         drv = drv_mgr.get_driver_for_hosting_device.return_value
         fake_running_config = 'a fake running config'
         drv.get_configuration = mock.MagicMock(
-            return_value=[fake_running_config])
+            return_value=fake_running_config)
         hd_id = None
         payload = {'hosting_device_id': hd_id}
         agent = cfg_agent.CiscoCfgAgentWithStateReport(HOSTNAME, self.conf)
@@ -176,7 +176,7 @@ class TestCiscoCfgAgentWithStateReporting(base.BaseTestCase):
         drv = drv_mgr.get_driver_for_hosting_device.return_value
         fake_running_config = 'a fake running config'
         drv.get_configuration = mock.MagicMock(
-            return_value=[fake_running_config])
+            return_value=fake_running_config)
         hd_id = 'a_hd_id'
         payload = {'hosting_device_id': hd_id}
         agent = cfg_agent.CiscoCfgAgentWithStateReport(HOSTNAME, self.conf)
