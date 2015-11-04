@@ -143,6 +143,9 @@ class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
                                                    hd)
         cfg_syncer.delete_invalid_cfg()
 
+    def get_configuration(self):
+        return self._get_running_config(split=False)
+
     # ============== Internal "preparation" functions  ==============
     def _get_vrf_name(self, ri):
         """

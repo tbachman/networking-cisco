@@ -68,7 +68,7 @@ class IosXeRoutingDriver(devicedriver_api.RoutingDriverBase):
         except KeyError as e:
             LOG.error(_LE("Missing device parameter:%s. Aborting "
                           "IosXeRoutingDriver initialization"), e)
-            raise cfg_exc.CSR1kvInitializationException()
+            raise cfg_exc.InitializationException()
 
     ###### Public Functions ########
     def router_added(self, ri):
@@ -117,6 +117,9 @@ class IosXeRoutingDriver(devicedriver_api.RoutingDriverBase):
     def cleanup_invalid_cfg(self, hd, routers):
         # at this point nothing to be done for CSR
         return
+
+    def get_configuration(self):
+        return self._get_running_config(split=False)
 
     ##### Internal Functions  ####
 
@@ -282,7 +285,7 @@ class IosXeRoutingDriver(devicedriver_api.RoutingDriverBase):
             conn_params = {'host': self._host_ip, 'port': self._host_ssh_port,
                            'user': self._username,
                            'timeout': self._timeout, 'reason': e.message}
-            raise cfg_exc.CSR1kvConnectionException(**conn_params)
+            raise cfg_exc.ConnectionException(**conn_params)
 
     def _get_interface_name_from_hosting_port(self, port):
         vlan = self._get_interface_vlan_from_hosting_port(port)
@@ -419,7 +422,7 @@ class IosXeRoutingDriver(devicedriver_api.RoutingDriverBase):
         LOG.debug("Server capabilities: %s", capabilities)
         return capabilities
 
-    def _get_running_config(self):
+    def _get_running_config(self, split=True):
         """Get the CSR's current running config.
 
         :return: Current IOS running config as multiline string
@@ -429,8 +432,11 @@ class IosXeRoutingDriver(devicedriver_api.RoutingDriverBase):
         if config:
             root = ET.fromstring(config._raw)
             running_config = root[0][0]
-            rgx = re.compile("\r*\n+")
-            ioscfg = rgx.split(running_config.text)
+            if split is True:
+                rgx = re.compile("\r*\n+")
+                ioscfg = rgx.split(running_config.text)
+            else:
+                ioscfg = running_config.text
             return ioscfg
 
     def _check_acl(self, acl_no, network, netmask):
