@@ -49,7 +49,8 @@ VRF_MULTI_REGION_REGEX_NEW = "vrf definition " + NROUTER_MULTI_REGION_REGEX
 
 INTF_REGEX = "interface \S+\.(\d+)"
 INTF_DESC_REGEX = "\s*description OPENSTACK_NEUTRON_INTF"
-INTF_DESC_MULTI_REGION_REGEX = "\s*description OPENSTACK_NEUTRON_(\w{1,7}_INTF"
+INTF_DESC_MULTI_REGION_REGEX = "\s*description" \
+    " OPENSTACK_NEUTRON_(\w{1,7})_INTF"
 VRF_EXT_INTF_REGEX = "\s*ip vrf forwarding .*"
 VRF_INTF_REGEX = "\s*ip vrf forwarding " + NROUTER_REGEX
 VRF_INTF_MULTI_REGION_REGEX = "\s*ip vrf forwarding " + \
