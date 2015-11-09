@@ -19,10 +19,8 @@ import re
 import time
 import xml.etree.ElementTree as ET
 
-import ciscoconfparse
-from ncclient import manager
-
 from oslo_config import cfg
+from oslo_utils import importutils
 
 from neutron.i18n import _LE, _LI, _LW
 
@@ -32,6 +30,9 @@ from networking_cisco.plugins.cisco.cfg_agent.device_drivers import (
 from networking_cisco.plugins.cisco.cfg_agent.device_drivers.csr1kv import (
     cisco_csr1kv_snippets as snippets)
 from networking_cisco.plugins.cisco.extensions import ha
+
+ciscoconfparse = importutils.try_import('ciscoconfparse')
+manager = importutils.try_import('ncclient.manager')
 
 LOG = logging.getLogger(__name__)
 
