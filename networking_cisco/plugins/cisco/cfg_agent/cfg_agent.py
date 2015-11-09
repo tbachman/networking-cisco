@@ -476,6 +476,8 @@ def _mock_stuff():
 def main(manager='networking_cisco.plugins.cisco.cfg_agent.'
                  'cfg_agent.CiscoCfgAgentWithStateReport'):
     # NOTE(bobmel): call _mock_stuff() to run config agent with fake ncclient
+    # This mocked mode of running the config agent is useful for end-2-end-like
+    # debugging without actual backend hosting devices.
     #_mock_stuff()
     conf = cfg.CONF
     conf.register_opts(CiscoCfgAgent.OPTS, "cfg_agent")
