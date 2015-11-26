@@ -614,7 +614,8 @@ class HostingDeviceConfigAgentSchedulerTestCase(
             self.assertEqual(len(self.plugin._cfg_agent_statuses),
                              len(self._agent_dict))
             agent_ids = {attrs['id'] for attrs in self._agent_dict.values()}
-            for agent_id, info in self.plugin._cfg_agent_statuses.iteritems():
+            for agent_id, info in six.iteritems(
+                    self.plugin._cfg_agent_statuses):
                 self.assertIn(agent_id, agent_ids)
 
     def test__check_config_agents_stops_monitoring_non_existent_cfg_agents(
@@ -692,8 +693,8 @@ class HostingDeviceConfigAgentSchedulerTestCase(
             hdt = hosting_device_template['hosting_device_template']
             with self.hosting_device(
                     template_id=hdt['id']) as hosting_device_1,\
-                 self.hosting_device(
-                     template_id=hdt['id']) as hosting_device_2:
+                    self.hosting_device(
+                        template_id=hdt['id']) as hosting_device_2:
                 cfg_agent_id1 = self._agent_dict[L3_CFG_HOST_A]['id']
                 self._test_assign_hosting_device_to_cfg_agent(hosting_device_1,
                                                               cfg_agent_id1)

@@ -244,7 +244,7 @@ class CfgAgentSchedulerDbMixin(
         to_remove = []
         LOG.debug('In _check_config_agents: Monitored config agents %s:' %
                   self._cfg_agent_statuses.keys())
-        for cfg_agent_id, info in self._cfg_agent_statuses.iteritems():
+        for cfg_agent_id, info in six.iteritems(self._cfg_agent_statuses):
             if self.should_check_agent(info['timestamp']):
                 # agent has not been checked recently so do it now
                 LOG.debug('Must check status of config agent %s' %
@@ -296,7 +296,7 @@ class CfgAgentSchedulerDbMixin(
     def _notify_assignment(self, context, agent_assigned_hd_ids):
         cfg_notifier = self.agent_notifiers.get(c_constants.AGENT_TYPE_CFG)
         if cfg_notifier:
-            for agent_id, info in agent_assigned_hd_ids.iteritems():
+            for agent_id, info in six.iteritems(agent_assigned_hd_ids):
                 cfg_notifier.hosting_devices_assigned_to_cfg_agent(
                     context, info['hd_ids'], info['agent_host'])
 
