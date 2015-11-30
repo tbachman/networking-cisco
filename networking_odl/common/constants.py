@@ -13,8 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+ODL_FLOATINGIP = 'floatingip'
 ODL_NETWORK = 'network'
 ODL_NETWORKS = 'networks'
+ODL_ROUTER = 'router'
+ODL_ROUTER_INTF = 'router_interface'
 ODL_SUBNET = 'subnet'
 ODL_SUBNETS = 'subnets'
 ODL_PORT = 'port'
@@ -38,3 +41,5 @@ ODL_HEALTHMONITORS = 'healthmonitors'
 ODL_CREATE = 'create'
 ODL_UPDATE = 'update'
 ODL_DELETE = 'delete'
+ODL_ADD = 'add'
+ODL_REMOVE = 'remove'
