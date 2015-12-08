@@ -1,0 +1,10 @@
+pbr>=0.6,!=0.7,<1.0
+eventlet
+python-neutronclient
+oslo.concurrency
+oslo.config<2.0.0
+oslo.utils<2.0.0
+oslo.db
+oslo.log
+oslo.messaging
+-e git://git.openstack.org/openstack/neutron.git@icehouse-eol#egg=neutron

@@ -1,0 +1,7 @@
+pep8
+mock
+python-subunit
+testrepository
+testtools
+testscenarios
+tempest-lib

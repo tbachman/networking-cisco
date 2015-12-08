@@ -1,0 +1,19 @@
+Metadata-Version: 1.1
+Name: Cisco PNR DHCP/DNS Driver and Relay Processes
+Version: 1.0.0.dev0.g
+Summary: Cisco PNR DHCP/DNS Driver and Relay Processes
+Home-page: http://www.cisco.com/
+Author: Vikram Hosakote
+Author-email: vhosakot@cisco.com
+License: UNKNOWN
+Description: False
+Platform: UNKNOWN
+Classifier: Environment :: OpenStack
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 2.6
