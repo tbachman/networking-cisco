@@ -222,7 +222,14 @@ class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
         self._do_create_sub_interface(sub_interface, vlan, vrf_name, hsrp_ip,
                                       net_mask, is_external)
         # Always do HSRP
-        self._add_ha_hsrp(ri, port)
+        if ri.router.get(ha.ENABLED, False):
+            if port.get(ha.HA_INFO) is not None:
+                self._add_ha_hsrp(ri, port)
+            else:
+                # We are missing HA data, candidate for retrying
+                params = {'r_id': ri.router_id, 'p_id': port['id'],
+                          'port': port}
+                raise cfg_exc.HAParamsMissingException(**params)
 
     def _do_create_sub_interface(self, sub_interface, vlan_id, vrf_name, ip,
                                  mask, is_external=False):
@@ -461,7 +468,7 @@ class ASR1kRoutingDriver(iosxe_driver.IosXeRoutingDriver):
         try:
             self._edit_running_config(conf_str, 'SET_DYN_SRC_TRL_POOL')
         except Exception as dyn_nat_e:
-            LOG.info(_LI("Ignore exception for SET_DYN_SRC_TRL_POOL: %s."
+            LOG.info(_LI("Ignore exception for SET_DYN_SRC_TRL_POOL: %s. "
                          "The config seems to be applied properly but netconf "
                          "seems to report an error."), dyn_nat_e)
 
