@@ -1,0 +1,83 @@
+# Cisco router service plugin
+# ---------------------------
+
+# Save trace setting
+MY_XTRACE=$(set +o | grep xtrace)
+set +o xtrace
+
+Q_CISCO_DEFAULT_ROUTER_TYPE=${Q_CISCO_DEFAULT_ROUTER_TYPE:-ASR1k_router}
+
+CISCO_ROUTER_PLUGIN=networking_cisco.plugins.cisco.service_plugins.cisco_router_plugin.CiscoRouterPlugin
+CISCO_DEVMGR_PLUGIN=networking_cisco.plugins.cisco.service_plugins.cisco_device_manager_plugin.CiscoDeviceManagerPlugin
+
+CISCO_ROUTER_PLUGIN_CONF_FILE=cisco_router_plugin.ini
+CISCO_DEVMGR_PLUGIN_CONF_FILE=cisco_device_manager_plugin.ini
+
+PLUGIN_CONFIG_DIR=$NEUTRON_CONF_DIR/plugins/cisco
+NET_CISCO_CONF_DIR=$DIR_CISCO/etc/neutron/plugins/cisco
+
+function neutron_cisco_router_configure_common() {
+    Q_L3_ENABLED=True
+    Q_L3_ROUTER_PER_TENANT=True
+
+    _clear_L3_plugin
+
+    _neutron_service_plugin_class_add $CISCO_DEVMGR_PLUGIN
+    _neutron_service_plugin_class_add $CISCO_ROUTER_PLUGIN
+
+    mkdir -p $PLUGIN_CONFIG_DIR
+
+    cp $NET_CISCO_CONF_DIR/$CISCO_ROUTER_PLUGIN_CONF_FILE $PLUGIN_CONFIG_DIR/
+    cp $NET_CISCO_CONF_DIR/$CISCO_DEVMGR_PLUGIN_CONF_FILE $PLUGIN_CONFIG_DIR/
+
+    Q_CISCO_ROUTER_PLUGIN_CONF_FILE=$PLUGIN_CONFIG_DIR/$CISCO_ROUTER_PLUGIN_CONF_FILE
+    Q_CISCO_DEVMGR_PLUGIN_CONF_FILE=$PLUGIN_CONFIG_DIR/$CISCO_DEVMGR_PLUGIN_CONF_FILE
+
+    Q_PLUGIN_EXTRA_CONF_FILES=(${Q_PLUGIN_EXTRA_CONF_FILES[@]} $Q_CISCO_ROUTER_PLUGIN_CONF_FILE)
+    Q_PLUGIN_EXTRA_CONF_FILES=(${Q_PLUGIN_EXTRA_CONF_FILES[@]} $Q_CISCO_DEVMGR_PLUGIN_CONF_FILE)
+
+    # Copy policy.json from networking-cisco/etc to the neutron/etc folder
+    echo "Copying policy.json from ${DIR_CISCO}/etc/ to ${NEUTRON_CONF_DIR}"
+    cp $DIR_CISCO/etc/policy.json $Q_POLICY_FILE
+
+    _inject_deployer_config
+
+    iniset $Q_CISCO_ROUTER_PLUGIN_CONF_FILE routing default_router_type $Q_CISCO_DEFAULT_ROUTER_TYPE
+
+ }
+
+function neutron_cisco_router_configure_driver() {
+    :
+}
+
+function neutron_cisco_router_stop() {
+    :
+}
+
+# inject any deployer provided configurations
+function _inject_deployer_config() {
+    ROUTER_INJECT_FILE=$TOP_DIR/cisco_router_plugin.inject
+    # inject any deployer provided configurations
+    if [[ -f $ROUTER_INJECT_FILE ]]; then
+        cat $ROUTER_INJECT_FILE >> $Q_CISCO_ROUTER_PLUGIN_CONF_FILE
+    fi
+
+    # Inject device manager configs
+    DEVMGR_INJECT_FILE=$TOP_DIR/cisco_device_manager_plugin.inject
+    if [[ -f $DEVMGR_INJECT_FILE ]]; then
+        cat $DEVMGR_INJECT_FILE >> $Q_CISCO_DEVMGR_PLUGIN_CONF_FILE
+    fi
+}
+
+
+function _clear_L3_plugin() {
+  if [[  ,${Q_SERVICE_PLUGIN_CLASSES}, =~ ,${ML2_L3_PLUGIN}, ]]; then
+  echo "Found L3 plugin configured..Proceeding to delete it"
+
+  Q_SERVICE_PLUGIN_CLASSES=${Q_SERVICE_PLUGIN_CLASSES##$ML2_L3_PLUGIN}
+  echo "service plugins="$Q_SERVICE_PLUGIN_CLASSES
+fi
+}
+
+# Restore xtrace
+$MY_XTRACE

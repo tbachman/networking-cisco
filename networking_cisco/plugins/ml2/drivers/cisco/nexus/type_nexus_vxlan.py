@@ -15,6 +15,7 @@
 #
 
 import netaddr
+import six
 
 from oslo_config import cfg
 from oslo_log import log
@@ -23,13 +24,14 @@ import sqlalchemy as sa
 
 from networking_cisco.plugins.ml2.drivers.cisco.nexus import (
     constants as const)
+from networking_cisco.plugins.ml2.drivers.cisco.nexus import (
+    nexus_models_v2)
 
 from neutron.common import exceptions as exc
 from neutron.db import api as db_api
 from neutron.i18n import _LE, _LI, _LW
 from neutron.plugins.common import constants as p_const
 from neutron.plugins.ml2 import driver_api as api
-from neutron.plugins.ml2.drivers.cisco.nexus import nexus_models_v2
 from neutron.plugins.ml2.drivers import type_tunnel
 
 LOG = log.getLogger(__name__)
@@ -134,7 +136,7 @@ class NexusVxlanTypeDriver(type_tunnel.TunnelTypeDriver):
 
         mcast_for_vni = None
         for mcast_ip in self._parse_mcast_ranges():
-            if not unicode(mcast_ip) in allocs:
+            if not six.u(mcast_ip) in allocs:
                 mcast_for_vni = mcast_ip
                 break
         try:
@@ -170,7 +172,7 @@ class NexusVxlanTypeDriver(type_tunnel.TunnelTypeDriver):
         # determine current configured allocatable vnis
         vxlan_vnis = set()
         for tun_min, tun_max in self.tunnel_ranges:
-            vxlan_vnis |= set(xrange(tun_min, tun_max + 1))
+            vxlan_vnis |= set(six.moves.range(tun_min, tun_max + 1))
 
         session = db_api.get_session()
         with session.begin(subtransactions=True):
@@ -250,6 +252,9 @@ class NexusVxlanTypeDriver(type_tunnel.TunnelTypeDriver):
         pass
 
     def delete_endpoint(self, ip):
+        pass
+
+    def delete_endpoint_by_host_or_ip(self, host, ip):
         pass
 
     def get_endpoint_by_host(self, host):

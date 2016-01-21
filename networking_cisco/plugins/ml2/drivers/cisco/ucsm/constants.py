@@ -22,10 +22,17 @@ PCI_INFO_INTEL_82599 = "8086:10c9"
 
 VLAN_PATH = "fabric/lan"
 VLAN_COMPRESSION_TYPE = "included"
-DESCR = "Created by Openstack UCSM Mech Driver"
+DESCR = "Created by OpenStack UCSM Mech Driver"
 PORT_PROFILESETDN = "fabric/lan/profiles"
+
+# High Performance mode to be set within Port profiles for "Direct" mode.
 HIGH_PERF = "high-perf-reqd"
 NONE = "none"
+
+# Max ports that this port profile can be applied to
+MAX_PORTS = 64
+
+VIF_TYPE_802_QBH = '802.1qbh'
 
 VNIC_PATH_PREFIX = "/vnic-"
 VLAN_PATH_PREFIX = "/if-"
@@ -35,7 +42,6 @@ PORT_PROFILE_NAME_PREFIX = "OS-PP-"
 CLIENT_PROFILE_NAME_PREFIX = "OS-CL-"
 CLIENT_PROFILE_PATH_PREFIX = "/cl-"
 
-SERVICE_PROFILE_PATH_PREFIX = "org-root/ls-"
 ETH0 = "/ether-eth0"
 ETH1 = "/ether-eth1"
 DUPLICATE_EXCEPTION = "object already exists"

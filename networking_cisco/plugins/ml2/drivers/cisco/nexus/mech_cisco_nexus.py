@@ -17,7 +17,10 @@
 ML2 Mechanism Driver for Cisco Nexus platforms.
 """
 
+import eventlet
+import os
 import threading
+import time
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -47,9 +50,15 @@ LOG = logging.getLogger(__name__)
 
 HOST_NOT_FOUND = _LW("Host %s not defined in switch configuration section.")
 
+# Delay the start of the monitor thread to avoid problems with Neutron server
+# process forking. One problem observed was ncclient RPC sync close_session
+# call hanging during initial _monitor_thread() processing to replay existing
+# database.
+DELAY_MONITOR_THREAD = 30
+
 
 class CiscoNexusCfgMonitor(object):
-    """Replay config on communication failure between Openstack to Nexus."""
+    """Replay config on communication failure between OpenStack to Nexus."""
 
     def __init__(self, driver, mdriver):
         self._driver = driver
@@ -57,7 +66,13 @@ class CiscoNexusCfgMonitor(object):
         switch_connections = self._mdriver.get_switch_ips()
         for switch_ip in switch_connections:
             self._mdriver.set_switch_ip_and_active_state(
-                switch_ip, False)
+                switch_ip, const.SWITCH_INACTIVE)
+            # this initialization occurs later for replay case
+            if not self._mdriver.is_replay_enabled():
+                try:
+                    self._initialize_trunk_interfaces_to_none(switch_ip)
+                except Exception:
+                    pass
 
     def _configure_nexus_type(self, switch_ip, nexus_type):
         if nexus_type not in (const.NEXUS_3K, const.NEXUS_5K,
@@ -70,10 +85,51 @@ class CiscoNexusCfgMonitor(object):
            const.NEXUS_TYPE_INVALID):
             self._mdriver.set_switch_nexus_type(switch_ip, nexus_type)
 
+    def _initialize_trunk_interfaces_to_none(self, switch_ip):
+        try:
+            # The following determines if the switch interfaces are
+            # in place.  If so, make sure they have a basic trunk
+            # configuration applied to none.
+            switch_ifs = self._mdriver._get_switch_interfaces(switch_ip)
+            if not switch_ifs:
+                LOG.debug("Skipping switch %s which has no configured "
+                          "interfaces",
+                          switch_ip)
+                return
+            self._driver.initialize_all_switch_interfaces(switch_ifs)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.warn(_LW("Unable to initialize interfaces to "
+                         "switch %(switch_ip)s"),
+                         {'switch_ip': switch_ip})
+                self._mdriver.register_switch_as_inactive(switch_ip,
+                    'replay init_interface')
+
+        # When replay not enabled, this is call early during initialization.
+        # To prevent bogus ssh handles from being copied to child processes,
+        # release the handles now.
+        if self._mdriver.is_replay_enabled():
+            return
+        try:
+                mgr = self._driver.nxos_connect(switch_ip)
+                self._driver._close_session(mgr, switch_ip)
+        except Exception:
+                LOG.warn(_LW("Failed to release connection after initialize "
+                         "interfaces for switch %(switch_ip)s"),
+                         {'switch_ip': switch_ip})
+
     def replay_config(self, switch_ip):
         """Sends pending config data in OpenStack to Nexus."""
         LOG.debug("Replaying config for switch ip %(switch_ip)s",
                   {'switch_ip': switch_ip})
+
+        # Before replaying all config, initialize trunk interfaces
+        # to none as required.  If this fails, the switch may not
+        # be up all the way.  Quit and retry later.
+        try:
+            self._initialize_trunk_interfaces_to_none(switch_ip)
+        except Exception:
+            return
 
         nve_bindings = nxos_db.get_nve_switch_bindings(switch_ip)
 
@@ -87,8 +143,7 @@ class CiscoNexusCfgMonitor(object):
                     "Reason:%(reason)s "),
                     {'switch_ip': switch_ip, 'vni': x.vni,
                      'reason': e})
-                if self.monitor_timeout > 0:
-                    self._mdriver.register_switch_as_inactive(switch_ip,
+                self._mdriver.register_switch_as_inactive(switch_ip,
                     'replay create_nve_member')
                 return
 
@@ -100,54 +155,90 @@ class CiscoNexusCfgMonitor(object):
                       {'switch_ip': switch_ip})
             return
 
-        self._mdriver.configure_switch_entries(switch_ip,
-            port_bindings)
+        try:
+            self._mdriver.configure_switch_entries(
+                switch_ip, port_bindings)
+        except Exception as e:
+                LOG.error(_LE("Unexpected exception while replaying "
+                    "entries for switch %(switch_ip)s, Reason:%(reason)s "),
+                    {'switch_ip': switch_ip, 'reason': e})
+                self._mdriver.register_switch_as_inactive(switch_ip,
+                    'replay switch_entries')
 
     def check_connections(self):
-        """Check connection between Openstack to Nexus device."""
-        switch_connections = self._mdriver.get_switch_state()
+        """Check connection between OpenStack to Nexus device."""
+        switch_connections = self._mdriver.get_all_switch_ips()
 
         for switch_ip in switch_connections:
             state = self._mdriver.get_switch_ip_and_active_state(switch_ip)
-            retry_count = self._mdriver.get_switch_retry_count(switch_ip)
-            cfg_retry = conf.cfg.CONF.ml2_cisco.switch_replay_count
-            if retry_count > cfg_retry:
-                continue
-            if retry_count == cfg_retry:
-                LOG.warn(_LW("check_connections() switch "
-                         "%(switch_ip)s retry count %(rcnt)d exceeded "
-                         "configured threshold %(thld)d"),
-                         {'switch_ip': switch_ip,
-                         'rcnt': retry_count,
-                         'thld': cfg_retry})
-                self._mdriver.incr_switch_retry_count(switch_ip)
-                continue
+            config_failure = self._mdriver.get_switch_replay_failure(
+                const.FAIL_CONFIG, switch_ip)
+            contact_failure = self._mdriver.get_switch_replay_failure(
+                const.FAIL_CONTACT, switch_ip)
             LOG.debug("check_connections() switch "
-                      "%(switch_ip)s state %(state)d",
-                      {'switch_ip': switch_ip, 'state': state})
+                      "%(switch_ip)s state %(state)s "
+                      "contact_failure %(contact_failure)d "
+                      "config_failure %(config_failure)d ",
+                      {'switch_ip': switch_ip, 'state': state,
+                       'contact_failure': contact_failure,
+                       'config_failure': config_failure})
             try:
+                # Send a simple get nexus type to determine if
+                # the switch is up
                 nexus_type = self._driver.get_nexus_type(switch_ip)
             except Exception:
-                if state is True:
+                if state != const.SWITCH_INACTIVE:
                     LOG.error(_LE("Lost connection to switch ip "
                         "%(switch_ip)s"), {'switch_ip': switch_ip})
                     self._mdriver.set_switch_ip_and_active_state(
-                        switch_ip, False)
+                        switch_ip, const.SWITCH_INACTIVE)
+                else:
+                    self._mdriver.incr_switch_replay_failure(
+                        const.FAIL_CONTACT, switch_ip)
             else:
-                if state is False:
+                if state == const.SWITCH_RESTORE_S2:
+                    try:
+                        self._mdriver.configure_next_batch_of_vlans(switch_ip)
+                    except Exception as e:
+                        LOG.error(_LE("Unexpected exception while replaying "
+                                  "entries for switch %(switch_ip)s, "
+                                  "Reason:%(reason)s "),
+                                  {'switch_ip': switch_ip, 'reason': e})
+                        self._mdriver.register_switch_as_inactive(
+                            switch_ip, 'replay next_vlan_batch')
+                    continue
+
+                if state == const.SWITCH_INACTIVE:
                     self._configure_nexus_type(switch_ip, nexus_type)
                     LOG.info(_LI("Re-established connection to switch "
                         "ip %(switch_ip)s"),
                         {'switch_ip': switch_ip})
+
                     self._mdriver.set_switch_ip_and_active_state(
-                        switch_ip, True)
+                        switch_ip, const.SWITCH_RESTORE_S1)
+                    self._driver.keep_ssh_caching()
                     self.replay_config(switch_ip)
+                    self._driver.init_ssh_caching()
+
                     # If replay failed, it stops trying to configure db entries
-                    # and sets switch state to False so this caller knows
-                    # it failed.
+                    # and sets switch state to inactive so this caller knows
+                    # it failed.  If it did fail, we increment the
+                    # retry counter else reset it to 0.
                     if self._mdriver.get_switch_ip_and_active_state(
-                        switch_ip) is False:
-                        self._mdriver.incr_switch_retry_count(switch_ip)
+                        switch_ip) == const.SWITCH_INACTIVE:
+                        self._mdriver.incr_switch_replay_failure(
+                            const.FAIL_CONFIG, switch_ip)
+                        LOG.warn(_LW("Replay config failed for "
+                            "ip %(switch_ip)s"),
+                            {'switch_ip': switch_ip})
+                    else:
+                        self._mdriver.reset_switch_replay_failure(
+                            const.FAIL_CONFIG, switch_ip)
+                        self._mdriver.reset_switch_replay_failure(
+                            const.FAIL_CONTACT, switch_ip)
+                        LOG.info(_LI("Replay config successful for "
+                            "ip %(switch_ip)s"),
+                            {'switch_ip': switch_ip})
 
 
 class CiscoNexusMechanismDriver(api.MechanismDriver):
@@ -166,28 +257,73 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
 
         self.driver = nexus_network_driver.CiscoNexusDriver()
 
+        # This method is only called once regardless of number of
+        # api/rpc workers defined.
+        self._ppid = os.getpid()
+
         self.monitor = CiscoNexusCfgMonitor(self.driver, self)
         self.timer = None
         self.monitor_timeout = conf.cfg.CONF.ml2_cisco.switch_heartbeat_time
         self.monitor_lock = threading.Lock()
         # Start the monitor thread
-        if self.monitor_timeout > 0:
-            self._monitor_thread()
+        if self.is_replay_enabled():
+            eventlet.spawn_after(DELAY_MONITOR_THREAD, self._monitor_thread)
+
+    def is_replay_enabled(self):
+        return conf.cfg.CONF.ml2_cisco.switch_heartbeat_time > 0
 
     def set_switch_ip_and_active_state(self, switch_ip, state):
-        self._switch_state[switch_ip, '_connect_active'] = state
+        if not self.is_replay_enabled():
+            return
+        try:
+            nxos_db.get_reserved_bindings(
+                const.NO_VLAN_OR_VNI_ID,
+                const.RESERVED_NEXUS_SWITCH_DEVICE_ID_R1,
+                switch_ip)
+        except excep.NexusPortBindingNotFound:
+            # overload port_id to contain switch state
+            nxos_db.add_nexusport_binding(
+                state, const.NO_VLAN_OR_VNI_ID,
+                const.NO_VLAN_OR_VNI_ID,
+                switch_ip,
+                const.RESERVED_NEXUS_SWITCH_DEVICE_ID_R1,
+                False)
+        # overload port_id to contain switch state
+        nxos_db.update_reserved_binding(
+            const.NO_VLAN_OR_VNI_ID,
+            switch_ip,
+            const.RESERVED_NEXUS_SWITCH_DEVICE_ID_R1,
+            state)
 
     def get_switch_ip_and_active_state(self, switch_ip):
-        if (switch_ip, '_connect_active') in self._switch_state:
-            return self._switch_state[switch_ip, '_connect_active']
+        if not self.is_replay_enabled():
+            return const.SWITCH_ACTIVE
+        binding = nxos_db.get_reserved_bindings(
+                      const.NO_VLAN_OR_VNI_ID,
+                      const.RESERVED_NEXUS_SWITCH_DEVICE_ID_R1,
+                      switch_ip)
+        if len(binding) == 1:
+            return binding[0].port_id
         else:
-            return False
+            return const.SWITCH_INACTIVE
+
+    def _is_reserved_binding(self, binding):
+        return (binding.instance_id ==
+               const.RESERVED_NEXUS_SWITCH_DEVICE_ID_R1)
 
     def register_switch_as_inactive(self, switch_ip, func_name):
-        self.set_switch_ip_and_active_state(switch_ip, False)
+        self.set_switch_ip_and_active_state(switch_ip, const.SWITCH_INACTIVE)
         LOG.exception(
             _LE("Nexus Driver cisco_nexus failed in %(func_name)s"),
             {'func_name': func_name})
+
+    def is_switch_active(self, switch_ip):
+        if self.is_replay_enabled():
+            switch_state = self.get_switch_ip_and_active_state(switch_ip)
+            active_states = [const.SWITCH_ACTIVE, const.SWITCH_RESTORE_S2]
+            return switch_state in active_states
+        else:
+            return True
 
     def set_switch_nexus_type(self, switch_ip, type):
         self._switch_state[switch_ip, '_nexus_type'] = type
@@ -198,41 +334,112 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
         else:
             return -1
 
-    def reset_switch_retry_count(self, switch_ip):
-        self._switch_state[switch_ip, '_retry_count'] = 0
+    def _save_switch_vlan_range(self, switch_ip, vlan_range):
+        self._switch_state[switch_ip, '_vlan_range'] = vlan_range
 
-    def incr_switch_retry_count(self, switch_ip):
-        if (switch_ip, '_retry_count') in self._switch_state:
-            self._switch_state[switch_ip, '_retry_count'] += 1
+    def _get_switch_vlan_range(self, switch_ip):
+        if (switch_ip, '_vlan_range') in self._switch_state:
+            return self._switch_state[switch_ip, '_vlan_range']
         else:
-            self.reset_switch_retry_count(switch_ip)
+            return []
 
-    def get_switch_retry_count(self, switch_ip):
-        if (switch_ip, '_retry_count') not in self._switch_state:
-            self.reset_switch_retry_count(switch_ip)
-        return self._switch_state[switch_ip, '_retry_count']
+    def _save_switch_vxlan_range(self, switch_ip, vxlan_range):
+        self._switch_state[switch_ip, '_vxlan_range'] = vxlan_range
 
-    def get_switch_state(self):
+    def _get_switch_vxlan_range(self, switch_ip):
+        if (switch_ip, '_vxlan_range') in self._switch_state:
+            return self._switch_state[switch_ip, '_vxlan_range']
+        else:
+            return []
+
+    def _pop_vlan_range(self, switch_ip, size):
+        """Extract a specific number of vlans from storage.
+
+        Purpose: Can only send a limited number of vlans
+        to Nexus at a time.
+
+        Sample Use Cases:
+        1) vlan_range is a list of vlans.  If there is a
+        list 1000, 1001, 1002, thru 2000 and size is 6,
+        then the result is '1000-1005' and 1006 thru 2000
+        is pushed back into storage.
+        2) if the list is 1000, 1003, 1004, 1006 thru 2000
+        and size is 6, then the result is
+        '1000, 1003-1004, 1006-1008' and 1009 thru 2000
+        is pushed back into storage for next time.
+        """
+        vlan_range = self._get_switch_vlan_range(switch_ip)
+        sized_range = ''
+        fr = 0
+        to = 0
+        # if vlan_range not empty and haven't met requested size
+        while size > 0 and vlan_range:
+            vlan_id, vni, vlan_name = vlan_range.pop(0)
+            size -= 1
+            if fr == 0 and to == 0:
+                fr = vlan_id
+                to = vlan_id
+            else:
+                diff = vlan_id - to
+                if diff == 1:
+                    to = vlan_id
+                else:
+                    if fr == to:
+                        sized_range += str(to) + ','
+                    else:
+                        sized_range += str(fr) + '-'
+                        sized_range += str(to) + ','
+                    fr = vlan_id
+                    to = vlan_id
+        if fr != 0:
+            if fr == to:
+                sized_range += str(to)
+            else:
+                sized_range += str(fr) + '-'
+                sized_range += str(to)
+            self._save_switch_vlan_range(switch_ip, vlan_range)
+
+        return sized_range
+
+    def _valid_replay_key(self, fail_key, switch_ip):
+        if (switch_ip, const.REPLAY_FAILURES) not in self._switch_state:
+            self._switch_state[switch_ip, const.REPLAY_FAILURES] = {
+                const.FAIL_CONTACT: 0,
+                const.FAIL_CONFIG: 0}
+
+        return fail_key in self._switch_state[switch_ip,
+                                              const.REPLAY_FAILURES]
+
+    def reset_switch_replay_failure(self, fail_key, switch_ip):
+        if self._valid_replay_key(fail_key, switch_ip):
+            self._switch_state[switch_ip, const.REPLAY_FAILURES][fail_key] = 0
+
+    def incr_switch_replay_failure(self, fail_key, switch_ip):
+        if self._valid_replay_key(fail_key, switch_ip):
+            self._switch_state[switch_ip, const.REPLAY_FAILURES][fail_key] += 1
+
+    def get_switch_replay_failure(self, fail_key, switch_ip):
+        if self._valid_replay_key(fail_key, switch_ip):
+            return self._switch_state[switch_ip,
+                   const.REPLAY_FAILURES][fail_key]
+        else:
+            return 0
+
+    def get_all_switch_ips(self):
+        """Using reserved switch binding get all switch ips."""
+
         switch_connections = []
-        for switch_ip, attr in self._switch_state:
-            if str(attr) == '_connect_active':
-                switch_connections.append(switch_ip)
+        try:
+            bindings = nxos_db.get_reserved_bindings(
+                           const.NO_VLAN_OR_VNI_ID,
+                           const.RESERVED_NEXUS_SWITCH_DEVICE_ID_R1)
+        except excep.NexusPortBindingNotFound:
+            LOG.error(_LE("No switch bindings in the port data base"))
+            bindings = []
+        for switch in bindings:
+            switch_connections.append(switch.switch_ip)
 
         return switch_connections
-
-    def is_switch_configurable(self, switch_ip):
-        if self.monitor_timeout > 0:
-            return self.get_switch_ip_and_active_state(switch_ip)
-        else:
-            return True
-
-    def choose_to_reraise_driver_exception(self, switch_ip, func_name):
-
-        if self.monitor_timeout > 0:
-            self.register_switch_as_inactive(switch_ip, func_name)
-            return False
-        else:
-            return True
 
     def _valid_network_segment(self, segment):
         return (cfg.CONF.ml2_cisco.managed_physical_network is None or
@@ -241,27 +448,76 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
 
     def _is_supported_deviceowner(self, port):
         return (port['device_owner'].startswith('compute') or
-                port['device_owner'] == n_const.DEVICE_OWNER_DHCP)
+                port['device_owner'] == n_const.DEVICE_OWNER_DHCP or
+                port['device_owner'] == n_const.DEVICE_OWNER_ROUTER_HA_INTF)
 
     def _is_status_active(self, port):
         return port['status'] == n_const.PORT_STATUS_ACTIVE
 
-    def _get_switch_info(self, host_id):
+    def _gather_configured_ports(self, switch_ip, attr, host_list):
+        """Get all interfaces originally from ml2_conf_cisco files."""
+
+        for port_id in (
+            self._nexus_switches[switch_ip, attr].split(',')):
+            if ':' in port_id:
+                intf_type, port = port_id.split(':')
+            else:
+                intf_type, port = 'ethernet', port_id
+            host_list.append((switch_ip, intf_type, port))
+
+    def _get_host_switches(self, host_id):
+
+        all_switches = set()
+        active_switches = set()
+        for switch_ip, attr in self._nexus_switches:
+            if str(attr) == str(host_id):
+                all_switches.add(switch_ip)
+                if self.is_switch_active(switch_ip):
+                    active_switches.add(switch_ip)
+
+        return list(all_switches), list(active_switches)
+
+    def _get_active_host_connections(self, host_id):
+        host_found = False
         host_connections = []
         for switch_ip, attr in self._nexus_switches:
             if str(attr) == str(host_id):
-                for port_id in (
-                    self._nexus_switches[switch_ip, attr].split(',')):
-                    if ':' in port_id:
-                        intf_type, port = port_id.split(':')
-                    else:
-                        intf_type, port = 'ethernet', port_id
-                    host_connections.append((switch_ip, intf_type, port))
+                host_found = True
+                if self.is_switch_active(switch_ip):
+                    self._gather_configured_ports(
+                        switch_ip, attr, host_connections)
+
+        if not host_found:
+            LOG.warn(HOST_NOT_FOUND, host_id)
+
+        return host_connections
+
+    def _get_host_connections(self, host_id):
+        host_connections = []
+        for switch_ip, attr in self._nexus_switches:
+            if str(attr) == str(host_id):
+                self._gather_configured_ports(
+                    switch_ip, attr, host_connections)
 
         if not host_connections:
             LOG.warn(HOST_NOT_FOUND, host_id)
 
         return host_connections
+
+    def _get_switch_interfaces(self, requested_switch_ip):
+        """Identify host entries to get interfaces."""
+        switch_ifs = []
+        defined_attributes = [const.USERNAME, const.PASSWORD, const.SSHPORT,
+                              'physnet']
+        for switch_ip, attr in self._nexus_switches:
+            # if not in clearly defined attribute, it must be a host
+            # with it's listed interfaces
+            if (switch_ip == requested_switch_ip and
+                str(attr) not in defined_attributes):
+                self._gather_configured_ports(
+                    switch_ip, attr, switch_ifs)
+
+        return switch_ifs
 
     def get_switch_ips(self):
         switch_connections = []
@@ -302,9 +558,7 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
         host_nve_connections = self._get_switch_nve_info(host_id)
 
         for switch_ip in host_nve_connections:
-            if self.is_switch_configurable(switch_ip) is False:
-                self.reset_switch_retry_count(switch_ip)
-                continue
+
             # If configured to set global VXLAN values then
             #   If this is the first database entry for this switch_ip
             #   then configure the "interface nve" entry on the switch.
@@ -314,15 +568,8 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
                     LOG.debug("Nexus: create NVE interface")
                     loopback = self._nexus_switches.get(
                                         (switch_ip, 'nve_src_intf'), '0')
-                    try:
-                        self.driver.enable_vxlan_feature(switch_ip,
-                            const.NVE_INT_NUM, loopback)
-                    except Exception:
-                        with excutils.save_and_reraise_exception() as ctxt:
-                            ctxt.reraise = (
-                                self.choose_to_reraise_driver_exception(
-                                    switch_ip, 'enable_vxlan_feature'))
-                        continue
+                    self.driver.enable_vxlan_feature(switch_ip,
+                        const.NVE_INT_NUM, loopback)
 
             # If this is the first database entry for this (VNI, switch_ip)
             # then configure the "member vni #" entry on the switch.
@@ -330,14 +577,8 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
                                                                   switch_ip)
             if len(member_bindings) == 1:
                 LOG.debug("Nexus: add member")
-                try:
-                    self.driver.create_nve_member(switch_ip, const.NVE_INT_NUM,
-                                                  vni, mcast_group)
-                except Exception:
-                    with excutils.save_and_reraise_exception() as ctxt:
-                        ctxt.reraise = (
-                            self.choose_to_reraise_driver_exception(switch_ip,
-                                'create_nve_member'))
+                self.driver.create_nve_member(switch_ip, const.NVE_INT_NUM,
+                                              vni, mcast_group)
 
     def _delete_nve_db(self, vni, device_id, mcast_group, host_id):
         """Delete the nexus NVE database entry.
@@ -355,21 +596,13 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
         """
         host_nve_connections = self._get_switch_nve_info(host_id)
         for switch_ip in host_nve_connections:
-            if self.is_switch_configurable(switch_ip) is False:
-                self.reset_switch_retry_count(switch_ip)
-                continue
-            try:
-                if not nxos_db.get_nve_vni_switch_bindings(vni, switch_ip):
-                    self.driver.delete_nve_member(switch_ip,
-                        const.NVE_INT_NUM, vni)
-                if (cfg.CONF.ml2_cisco.vxlan_global_config and
-                    not nxos_db.get_nve_switch_bindings(switch_ip)):
-                    self.driver.disable_vxlan_feature(switch_ip)
-            except Exception:
-                with excutils.save_and_reraise_exception() as ctxt:
-                    ctxt.reraise = (
-                        self.choose_to_reraise_driver_exception(switch_ip,
-                            '(delete_nve_member||disable_vxlan_feature)'))
+
+            if not nxos_db.get_nve_vni_switch_bindings(vni, switch_ip):
+                self.driver.delete_nve_member(switch_ip,
+                    const.NVE_INT_NUM, vni)
+            if (cfg.CONF.ml2_cisco.vxlan_global_config and
+                not nxos_db.get_nve_switch_bindings(switch_ip)):
+                self.driver.disable_vxlan_feature(switch_ip)
 
     def _configure_nxos_db(self, vlan_id, device_id, host_id, vni,
                            is_provider_vlan):
@@ -377,7 +610,7 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
 
         Called during update precommit port event.
         """
-        host_connections = self._get_switch_info(host_id)
+        host_connections = self._get_host_connections(host_id)
         for switch_ip, intf_type, nexus_port in host_connections:
             port_id = '%s:%s' % (intf_type, nexus_port)
             try:
@@ -387,6 +620,26 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
                 nxos_db.add_nexusport_binding(port_id, str(vlan_id), str(vni),
                                               switch_ip, device_id,
                                               is_provider_vlan)
+
+    def _gather_config_parms(self, is_provider_vlan, vlan_id):
+        """Determine vlan_name, auto_create, auto_trunk from config."""
+        if is_provider_vlan:
+            vlan_name = cfg.CONF.ml2_cisco.provider_vlan_name_prefix
+            auto_create = cfg.CONF.ml2_cisco.provider_vlan_auto_create
+            auto_trunk = cfg.CONF.ml2_cisco.provider_vlan_auto_trunk
+        else:
+            vlan_name = cfg.CONF.ml2_cisco.vlan_name_prefix
+            auto_create = True
+            auto_trunk = True
+        if auto_create:
+            vlan_name_max_len = (
+                const.NEXUS_MAX_VLAN_NAME_LEN - len(str(vlan_id)))
+            if len(vlan_name) > vlan_name_max_len:
+                vlan_name = vlan_name[:vlan_name_max_len]
+                LOG.warn(_LW("Nexus: truncating vlan name to %s"),
+                         vlan_name)
+            vlan_name = vlan_name + str(vlan_id)
+        return vlan_name, auto_create, auto_trunk
 
     def _configure_port_binding(self, is_provider_vlan, duplicate_type,
                                 switch_ip, vlan_id,
@@ -398,19 +651,8 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
         if duplicate_type == const.DUPLICATE_PORT:
             return
 
-        if is_provider_vlan:
-            vlan_name = cfg.CONF.ml2_cisco.provider_vlan_name_prefix
-            auto_create = cfg.CONF.ml2_cisco.provider_vlan_auto_create
-            auto_trunk = cfg.CONF.ml2_cisco.provider_vlan_auto_trunk
-        else:
-            vlan_name = cfg.CONF.ml2_cisco.vlan_name_prefix
-            auto_create = True
-            auto_trunk = True
-        vlan_name_max_len = const.NEXUS_MAX_VLAN_NAME_LEN - len(str(vlan_id))
-        if len(vlan_name) > vlan_name_max_len:
-            vlan_name = vlan_name[:vlan_name_max_len]
-            LOG.warn(_LW("Nexus: truncating vlan name to %s"), vlan_name)
-        vlan_name = vlan_name + str(vlan_id)
+        vlan_name, auto_create, auto_trunk = self._gather_config_parms(
+            is_provider_vlan, vlan_id)
 
         # if type DUPLICATE_VLAN, don't create vlan
         if duplicate_type == const.DUPLICATE_VLAN:
@@ -419,15 +661,123 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
         if auto_create and auto_trunk:
             LOG.debug("Nexus: create & trunk vlan %s", vlan_name)
             self.driver.create_and_trunk_vlan(
-                switch_ip, vlan_id, vlan_name, intf_type, nexus_port,
-                vni)
+                switch_ip, vlan_id, vlan_name, intf_type,
+                nexus_port, vni)
         elif auto_create:
             LOG.debug("Nexus: create vlan %s", vlan_name)
-            self.driver.create_vlan(switch_ip, vlan_id, vlan_name, vni)
+            self.driver.create_vlan_segment(switch_ip, vlan_id,
+                                    vlan_name, vni)
         elif auto_trunk:
             LOG.debug("Nexus: trunk vlan %s", vlan_name)
-            self.driver.enable_vlan_on_trunk_int(switch_ip, vlan_id,
+            self.driver.send_enable_vlan_on_trunk_int(
+                switch_ip, vlan_id,
                 intf_type, nexus_port)
+
+    def _get_compressed_vlan_list(self, pvlan_ids):
+        """Generate a compressed vlan list ready for XML using a vlan set.
+
+        Sample Use Case:
+
+        Input vlan set:
+        --------------
+        1 - s = set([11, 50, 25, 30, 15, 16, 3, 8, 2, 1])
+        2 - s = set([87, 11, 50, 25, 30, 15, 16, 3, 8, 2, 1, 88])
+
+        Returned compressed XML list:
+        ----------------------------
+        1 - compressed_list = ['1-3', '8', '11', '15-16', '25', '30', '50']
+        2 - compressed_list = ['1-3', '8', '11', '15-16', '25', '30',
+                               '50', '87-88']
+        """
+
+        if not pvlan_ids:
+            return []
+
+        pvlan_list = list(pvlan_ids)
+        pvlan_list.sort()
+        compressed_list = []
+        begin = -1
+        prev_vlan = -1
+        for port_vlan in pvlan_list:
+            if prev_vlan == -1:
+                prev_vlan = port_vlan
+            else:
+                if (port_vlan - prev_vlan) == 1:
+                    if begin == -1:
+                        begin = prev_vlan
+                    prev_vlan = port_vlan
+                else:
+                    if begin == -1:
+                        compressed_list.append(str(prev_vlan))
+                    else:
+                        compressed_list.append("%d-%d" % (begin, prev_vlan))
+                        begin = -1
+                    prev_vlan = port_vlan
+
+        if begin == -1:
+            compressed_list.append(str(prev_vlan))
+        else:
+            compressed_list.append("%s-%s" % (begin, prev_vlan))
+        return compressed_list
+
+    def _restore_port_binding(self,
+                             switch_ip, pvlan_ids,
+                             port):
+        """Restores a set of vlans for a given port."""
+
+        if ':' in port:
+            intf_type, nexus_port = port.split(':')
+        else:
+            intf_type, nexus_port = 'ethernet', port
+
+        concat_vlans = ''
+        compressed_vlans = self._get_compressed_vlan_list(pvlan_ids)
+        for pvlan in compressed_vlans:
+
+            if concat_vlans == '':
+                concat_vlans = "%s" % pvlan
+            else:
+                concat_vlans += ",%s" % pvlan
+
+            # if string starts getting a bit long, send it.
+            if len(concat_vlans) >= const.CREATE_PORT_VLAN_LENGTH:
+                self.driver.send_enable_vlan_on_trunk_int(
+                    switch_ip, concat_vlans,
+                    intf_type, nexus_port)
+                concat_vlans = ''
+
+        # Send remaining vlans if any
+        if len(concat_vlans):
+            self.driver.send_enable_vlan_on_trunk_int(
+                    switch_ip, concat_vlans,
+                    intf_type, nexus_port)
+
+    def _restore_vxlan_entries(self, switch_ip, vlans):
+        """Restore vxlan entries on a Nexus switch."""
+
+        count = 1
+        conf_str = ''
+        vnsegment_sent = 0
+        # At this time, this will only configure vni information when needed
+        while vnsegment_sent < const.CREATE_VLAN_BATCH and vlans:
+            vlan_id, vni, vlan_name = vlans.pop(0)
+            # Add it to the batch
+            conf_str += self.driver.get_create_vlan(
+                            switch_ip, vlan_id, vni)
+            if (count == const.CREATE_VLAN_SEND_SIZE):
+                self.driver.send_edit_string(switch_ip, conf_str)
+                vnsegment_sent += count
+                conf_str = ''
+                count = 1
+            else:
+                count += 1
+
+        if conf_str:
+            vnsegment_sent += count
+            self.driver.send_edit_string(switch_ip, conf_str)
+            conf_str = ''
+        LOG.debug("Switch %s VLAN vn-segment replay summary: %d",
+                  switch_ip, vnsegment_sent)
 
     def _configure_host_entries(self, vlan_id, device_id, host_id, vni,
                                 is_provider_vlan):
@@ -438,48 +788,84 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
 
         Called during update postcommit port event.
         """
-        host_connections = self._get_switch_info(host_id)
+        host_connections = self._get_active_host_connections(host_id)
 
         # (nexus_port,switch_ip) will be unique in each iteration.
         # But switch_ip will repeat if host has >1 connection to same switch.
         # So track which switch_ips already have vlan created in this loop.
         vlan_already_created = []
+        starttime = time.time()
+
         for switch_ip, intf_type, nexus_port in host_connections:
 
-            if self.is_switch_configurable(switch_ip) is False:
-                self.reset_switch_retry_count(switch_ip)
-                continue
-
-            # The VLAN needs to be created on the switch if no other
-            # instance has been placed in this VLAN on a different host
-            # attached to this switch.  Search the existing bindings in the
-            # database.  If all the instance_id in the database match the
-            # current device_id, then create the VLAN, but only once per
-            # switch_ip.  Otherwise, just trunk.
             all_bindings = nxos_db.get_nexusvlan_binding(vlan_id, switch_ip)
             previous_bindings = [row for row in all_bindings
                     if row.instance_id != device_id]
-            duplicate_port = [row for row in all_bindings
-                    if row.instance_id != device_id and
-                    row.port_id == intf_type + ':' + nexus_port]
-            if duplicate_port:
-                duplicate_type = const.DUPLICATE_PORT
-            elif previous_bindings or (switch_ip in vlan_already_created):
+            if previous_bindings and (switch_ip in vlan_already_created):
                 duplicate_type = const.DUPLICATE_VLAN
             else:
                 vlan_already_created.append(switch_ip)
                 duplicate_type = const.NO_DUPLICATE
+            port_starttime = time.time()
             try:
-                self._configure_port_binding(is_provider_vlan,
-                                duplicate_type,
-                                switch_ip, vlan_id,
-                                intf_type, nexus_port,
-                                vni)
+                self._configure_port_binding(
+                    is_provider_vlan, duplicate_type,
+                    switch_ip, vlan_id,
+                    intf_type, nexus_port,
+                    vni)
             except Exception:
-                with excutils.save_and_reraise_exception() as ctxt:
-                    ctxt.reraise = (
-                        self.choose_to_reraise_driver_exception(switch_ip,
-                            '_configure_port_binding'))
+                with excutils.save_and_reraise_exception():
+                    self.driver.capture_and_print_timeshot(
+                        port_starttime, "port_configerr",
+                        switch=switch_ip)
+                    self.driver.capture_and_print_timeshot(
+                        starttime, "configerr",
+                        switch=switch_ip)
+            self.driver.capture_and_print_timeshot(
+                port_starttime, "port_config",
+                switch=switch_ip)
+        self.driver.capture_and_print_timeshot(
+            starttime, "config")
+
+    def configure_next_batch_of_vlans(self, switch_ip):
+        """Get next batch of vlans and send them to Nexus."""
+
+        next_range = self._pop_vlan_range(
+                          switch_ip, const.CREATE_VLAN_BATCH)
+        if next_range:
+            try:
+                self.driver.set_all_vlan_states(
+                    switch_ip, next_range)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Error encountered restoring vlans "
+                        "for switch %(switch_ip)s"),
+                        {'switch_ip': switch_ip})
+                    self._save_switch_vlan_range(switch_ip, [])
+
+        vxlan_range = self._get_switch_vxlan_range(switch_ip)
+        if vxlan_range:
+            try:
+                self._restore_vxlan_entries(switch_ip, vxlan_range)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Error encountered restoring vxlans "
+                        "for switch %(switch_ip)s"),
+                        {'switch_ip': switch_ip})
+                    self._save_switch_vxlan_range(switch_ip, [])
+
+        # if no more vlans to restore, we're done. go active.
+        if (not self._get_switch_vlan_range(switch_ip) and
+            not self._get_switch_vxlan_range(switch_ip)):
+            self.set_switch_ip_and_active_state(
+                switch_ip, const.SWITCH_ACTIVE)
+            LOG.info(_LI("Restore of Nexus switch "
+                "ip %(switch_ip)s is complete"),
+                {'switch_ip': switch_ip})
+        else:
+            LOG.debug(("Restored batch of VLANS on "
+                "Nexus switch ip %(switch_ip)s"),
+                {'switch_ip': switch_ip})
 
     def configure_switch_entries(self, switch_ip, port_bindings):
         """Create a nexus switch entry in Nexus.
@@ -495,40 +881,81 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
         prev_vlan = -1
         prev_vni = -1
         prev_port = None
-        port_bindings.sort(key=lambda x: (x.vlan_id, x.vni, x.port_id))
+        starttime = time.time()
+
+        port_bindings.sort(key=lambda x: (x.port_id, x.vlan_id, x.vni))
+        self.driver.capture_and_print_timeshot(starttime, "replay_t2_aft_sort",
+                                               switch=switch_ip)
+
+        # Let's make these lists a set to exclude duplicates
+        vlans = set()
+        pvlans = set()
+        interface_count = 0
+        duplicate_port = 0
+        vlan_count = 0
         for port in port_bindings:
-            if ':' in port.port_id:
-                intf_type, nexus_port = port.port_id.split(':')
+            if self._is_reserved_binding(port):
+                continue
+            vlan_name, auto_create, auto_trunk = self._gather_config_parms(
+                port.is_provider_vlan, port.vlan_id)
+            if port.port_id == prev_port:
+                if port.vlan_id == prev_vlan and port.vni == prev_vni:
+                    # Same port/Same Vlan - skip duplicate
+                    duplicate_port += 1
+                    continue
+                else:
+                    # Same port/different Vlan - track it
+                    vlan_count += 1
+                    if auto_create:
+                        vlans.add((port.vlan_id, port.vni, vlan_name))
+                    if auto_trunk:
+                        pvlans.add(port.vlan_id)
             else:
-                intf_type, nexus_port = 'ethernet', port.port_id
-            if port.vlan_id == prev_vlan and port.vni == prev_vni:
-                duplicate_type = const.DUPLICATE_VLAN
-                if port.port_id == prev_port:
-                    duplicate_type = const.DUPLICATE_PORT
+                # Different port - write out interface trunk on previous port
+                if prev_port:
+                    interface_count += 1
+                    LOG.debug("Switch %s port %s replay summary: unique vlan "
+                              "count %d, duplicate port entries %d",
+                              switch_ip, prev_port, vlan_count, duplicate_port)
+                duplicate_port = 0
+                vlan_count = 0
+                if pvlans:
+                    self._restore_port_binding(
+                        switch_ip, pvlans, prev_port)
+                    pvlans.clear()
+                # Start tracking new port
+                if auto_create:
+                    vlans.add((port.vlan_id, port.vni, vlan_name))
+                if auto_trunk:
+                    pvlans.add(port.vlan_id)
+                prev_port = port.port_id
+
+        if pvlans:
+            LOG.debug("Switch %s port %s replay summary: unique vlan "
+                      "count %d, duplicate port entries %d",
+                      switch_ip, port.port_id, vlan_count, duplicate_port)
+            self._restore_port_binding(
+                switch_ip, pvlans, prev_port)
+
+        LOG.debug("Replayed total %d ports for Switch %s",
+                  interface_count + 1, switch_ip)
+
+        self.driver.capture_and_print_timeshot(starttime, "replay_part_1",
+                                               switch=switch_ip)
+        vlans = list(vlans)
+        if vlans:
+            vlans.sort()
+            vlan, vni, vlan_name = vlans[0]
+            if vni == 0:
+                self._save_switch_vlan_range(switch_ip, vlans)
             else:
-                duplicate_type = const.NO_DUPLICATE
-            try:
-                self._configure_port_binding(
-                    port.is_provider_vlan, duplicate_type,
-                    switch_ip, port.vlan_id,
-                    intf_type, nexus_port,
-                    port.vni)
-            except Exception as e:
-                self.choose_to_reraise_driver_exception(switch_ip,
-                    'replay _configure_port_binding')
-                LOG.error(_LE("Failed to configure port binding "
-                    "for switch %(switch_ip)s, vlan %(vlan)s "
-                    "vni %(vni)s, port %(port)s, "
-                    "reason %(reason)s"),
-                    {'switch_ip': switch_ip,
-                     'vlan': port.vlan_id,
-                     'vni': port.vni,
-                     'port': port.port_id,
-                     'reason': e})
-                break
-            prev_vlan = port.vlan_id
-            prev_vni = port.vni
-            prev_port = port.port_id
+                self._save_switch_vxlan_range(switch_ip, vlans)
+
+        self.set_switch_ip_and_active_state(
+            switch_ip, const.SWITCH_RESTORE_S2)
+        self.configure_next_batch_of_vlans(switch_ip)
+        self.driver.capture_and_print_timeshot(starttime, "replay_part_2",
+                                               switch=switch_ip)
 
     def _delete_nxos_db(self, vlan_id, device_id, host_id, vni,
                         is_provider_vlan):
@@ -554,17 +981,13 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
 
         Called during delete postcommit port event.
         """
-        host_connections = self._get_switch_info(host_id)
+        host_connections = self._get_host_connections(host_id)
 
         # (nexus_port,switch_ip) will be unique in each iteration.
         # But switch_ip will repeat if host has >1 connection to same switch.
         # So track which switch_ips already have vlan removed in this loop.
         vlan_already_removed = []
         for switch_ip, intf_type, nexus_port in host_connections:
-
-            if self.is_switch_configurable(switch_ip) is False:
-                self.reset_switch_retry_count(switch_ip)
-                continue
 
             # if there are no remaining db entries using this vlan on this
             # nexus switch port then remove vlan from the switchport trunk.
@@ -584,16 +1007,8 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
                 continue
 
             if auto_trunk:
-                try:
-                    self.driver.disable_vlan_on_trunk_int(switch_ip,
-                        vlan_id, intf_type, nexus_port)
-                except Exception:
-                    with excutils.save_and_reraise_exception() as ctxt:
-                        ctxt.reraise = (
-                            self.choose_to_reraise_driver_exception(
-                                switch_ip,
-                                'disable_vlan_on_trunk_int'))
-                    continue
+                self.driver.disable_vlan_on_trunk_int(
+                    switch_ip, vlan_id, intf_type, nexus_port)
 
             # if there are no remaining db entries using this vlan on this
             # nexus switch then remove the vlan.
@@ -603,13 +1018,7 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
                 except excep.NexusPortBindingNotFound:
                     # Do not perform a second time on same switch
                     if switch_ip not in vlan_already_removed:
-                        try:
-                            self.driver.delete_vlan(switch_ip, vlan_id)
-                        except Exception:
-                            with excutils.save_and_reraise_exception() as ctxt:
-                                ctxt.reraise = (
-                                    self.choose_to_reraise_driver_exception(
-                                        switch_ip, 'delete_vlan'))
+                        self.driver.delete_vlan(switch_ip, vlan_id)
                         vlan_already_removed.append(switch_ip)
 
     def _is_segment_nexus_vxlan(self, segment):
@@ -713,6 +1122,46 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
             self.timer = None
 
     @lockutils.synchronized('cisco-nexus-portlock')
+    def create_port_postcommit(self, context):
+        """Create port non-database commit event."""
+
+        # No new events are handled until replay
+        # thread has put the switch in active state.
+        # If a switch is in active state, verify
+        # the switch is still in active state
+        # before accepting this new event.
+        #
+        # If create_port_postcommit fails, it causes
+        # other openstack dbs to be cleared and
+        # retries for new VMs will stop.  Subnet
+        # transactions will continue to be retried.
+
+        port = context.current
+        if self._is_supported_deviceowner(port):
+            host_id = port.get(portbindings.HOST_ID)
+
+            all_switches, active_switches = (
+                self._get_host_switches(host_id))
+
+            # Verify switch is still up before replay
+            # thread checks.
+            verified_active_switches = []
+            for switch_ip in active_switches:
+                try:
+                    self.driver.get_nexus_type(switch_ip)
+                    verified_active_switches.append(switch_ip)
+                except Exception:
+                    pass
+
+            # if host_id is valid and there is no active
+            # switches remaining
+            if all_switches and not verified_active_switches:
+                raise excep.NexusConnectFailed(
+                    nexus_host=all_switches[0], config="None",
+                    exc="Create Failed: Port event can not "
+                    "be processed at this time.")
+
+    @lockutils.synchronized('cisco-nexus-portlock')
     def update_port_precommit(self, context):
         """Update port pre-database transaction commit event."""
         vlan_segment, vxlan_segment = self._get_segments(
@@ -757,6 +1206,15 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
         else:
             if (self._is_supported_deviceowner(context.current) and
                 self._is_status_active(context.current)):
+                host_id = context.current.get(portbindings.HOST_ID)
+                all_switches, active_switches = (
+                    self._get_host_switches(host_id))
+                # if switches not active but host_id is valid
+                if not active_switches and all_switches:
+                    raise excep.NexusConnectFailed(
+                        nexus_host=all_switches[0], config="None",
+                        exc="Update Port Failed: Nexus Switch "
+                        "is down or replay in progress")
                 vni = self._port_action_vxlan(context.current, vxlan_segment,
                             self._configure_nve_member) if vxlan_segment else 0
                 self._port_action_vlan(context.current, vlan_segment,
@@ -795,7 +1253,7 @@ class CiscoNexusMechanismDriver(api.MechanismDriver):
 
                 # Find physical network setting for this host.
                 host_id = context.current.get(portbindings.HOST_ID)
-                host_connections = self._get_switch_info(host_id)
+                host_connections = self._get_host_connections(host_id)
                 if not host_connections:
                     return
 
