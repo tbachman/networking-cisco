@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: Cisco PNR DHCP/DNS Driver and Relay Processes
-Version: 1.0.0.dev0.g
+#Version: 1.0.0.dev0.g
 Summary: Cisco PNR DHCP/DNS Driver and Relay Processes
 Home-page: http://www.cisco.com/
 Author: Vikram Hosakote

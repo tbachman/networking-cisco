@@ -21,12 +21,15 @@ import os
 import shutil
 import time
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import encodeutils
+from oslo_utils import importutils
+from oslo_utils import timeutils
+from oslo_log import log as logging
 
 from neutron.agent.linux import dhcp
 from neutron.agent.linux import ip_lib
 from neutron.agent.linux import utils
-from neutron.openstack.common import log as logging
 from neutron.plugins.cisco.cpnr import model
 from neutron.plugins.cisco.cpnr import netns
 
@@ -143,7 +146,7 @@ class RemoteServerDriver(dhcp.DhcpBase):
         return dhcp.Dnsmasq.should_enable_metadata(conf, network)
 
     @classmethod
-    def existing_dhcp_networks(cls, conf, root_helper):
+    def existing_dhcp_networks(cls, conf):
         """Return a list of existing networks ids that we have configs for."""
         return _devices.keys()
 
@@ -247,10 +250,10 @@ class SimpleCpnrDriver(RemoteServerDriver):
         return ver
 
     @classmethod
-    def existing_dhcp_networks(cls, conf, root_helper):
+    def existing_dhcp_networks(cls, conf):
         """Return a list of existing networks ids that we have configs for."""
         sup = super(SimpleCpnrDriver, cls)
-        superkeys = sup.existing_dhcp_networks(conf, root_helper)
+        superkeys = sup.existing_dhcp_networks(conf)
         return set(_networks.keys()) & set(superkeys)
 
     @classmethod

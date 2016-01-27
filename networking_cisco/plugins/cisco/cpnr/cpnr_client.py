@@ -19,9 +19,8 @@
 
 import requests
 from requests import exceptions as r_exc
-
-from neutron.openstack.common import jsonutils
-from neutron.openstack.common import log as logging
+from oslo_serialization import jsonutils
+from oslo_log import log as logging
 from neutron.common import exceptions
 
 
