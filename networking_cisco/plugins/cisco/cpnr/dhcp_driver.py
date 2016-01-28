@@ -26,7 +26,6 @@ from oslo_utils import encodeutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_log import log as logging
-
 from neutron.agent.linux import dhcp
 from neutron.agent.linux import ip_lib
 from neutron.agent.linux import utils

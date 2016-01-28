@@ -187,22 +187,22 @@ class Scope:
         ipv4_subnets = [sub for sub in network.subnets
                         if sub.enable_dhcp and sub.ip_version == 4]
         primary_subnet = ipv4_subnets[0].cidr
-	if (subnet.cidr == primary_subnet):
+    if (subnet.cidr == primary_subnet):
             data = {'name': subnet.id,
-                'vpnId': vpnid,
-                'subnet': subnet.cidr,
-                'rangeList': range_list,
-                'restrictToReservations': 'enabled',
-                'embeddedPolicy': policy.data}
-	else:
+                    'vpnId': vpnid,
+                    'subnet': subnet.cidr,
+                    'rangeList': range_list,
+                    'restrictToReservations': 'enabled',
+                    'embeddedPolicy': policy.data}
+    else:
             data = {'name': subnet.id,
-                'vpnId': vpnid,
-                'subnet': subnet.cidr,
-                'rangeList': range_list,
-                'restrictToReservations': 'enabled',
-                'embeddedPolicy': policy.data,
-                'primarySubnet': primary_subnet}
-        return cls(data)
+                    'vpnId': vpnid,
+                    'subnet': subnet.cidr,
+                    'rangeList': range_list,
+                    'restrictToReservations': 'enabled',
+                    'embeddedPolicy': policy.data,
+                    'primarySubnet': primary_subnet}
+    return cls(data)
 
     @classmethod
     def from_pnr(cls, scope):
