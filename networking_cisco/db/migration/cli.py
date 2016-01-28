@@ -1,5 +1,3 @@
-# Copyright 2015 Cisco Systems, Inc
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -12,8 +10,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.db import model_base
+from neutron.db.migration.cli import *  # noqa
 
 
-def get_metadata():
-    return model_base.BASEV2.metadata
+def main():
+    config = alembic_config.Config(
+        os.path.join(os.path.dirname(__file__), 'alembic.ini'))
+    config.set_main_option(
+        'script_location',
+        'networking-cisco.db.migration:alembic_migrations')
+    config.neutron_config = CONF
+    CONF()
+    CONF.command.func(config, CONF.command.name)
