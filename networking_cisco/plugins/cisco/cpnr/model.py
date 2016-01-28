@@ -342,8 +342,13 @@ class Policy:
 
     @classmethod
     def from_neutron_port(cls, network, port):
-        if port.extra_dhcp_opts:
-            data = {'optionList': {'OptionItem': port.extra_dhcp_opts}}
+        opt_list = []
+        if hasattr(port, 'extra_dhcp_opts'):
+            for opt in port.extra_dhcp_opts:
+                opt_list.append(opt)
+
+        if opt_list:
+            data = {'optionList': {'OptionItem': opt_list}}
         else:
             data = {'optionList': {'list': []}}
         return cls(data)
