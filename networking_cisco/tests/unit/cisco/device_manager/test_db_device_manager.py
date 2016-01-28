@@ -27,6 +27,8 @@ from neutron.common import config
 from neutron import context as n_context
 from neutron.manager import NeutronManager
 from neutron.plugins.common import constants as svc_constants
+from networking_cisco.tests.unit.cisco import (
+    test_setup_monkeypatch as mp)
 from neutron.tests.unit.db import test_db_base_plugin_v2
 
 import networking_cisco
@@ -262,6 +264,7 @@ class TestDeviceManagerDBPlugin(
     DeviceManagerTestCaseMixin,
         device_manager_test_support.DeviceManagerTestSupportMixin):
 
+    svc_constants.COMMON_PREFIXES[c_constants.DEVICE_MANAGER] = "/dev_mgr"
     hdm_db.HostingDeviceManagerMixin.path_prefix = "/dev_mgr"
     resource_prefix_map = dict(
         (k, "/dev_mgr")
