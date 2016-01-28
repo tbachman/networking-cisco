@@ -18,7 +18,7 @@ def main():
         os.path.join(os.path.dirname(__file__), 'alembic.ini'))
     config.set_main_option(
         'script_location',
-        'networking-cisco.db.migration:alembic_migrations')
+        'networking_cisco.db.migration:alembic_migrations')
     config.neutron_config = CONF
     CONF()
     CONF.command.func(config, CONF.command.name)
