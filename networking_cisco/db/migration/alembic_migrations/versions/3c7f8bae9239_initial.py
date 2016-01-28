@@ -20,7 +20,7 @@ Create Date: 2015-07-28 17:38:34.209525
 
 """
 
-from neutron.db.migration import cli
+from networking_cisco.db.migration import cli
 
 
 # revision identifiers, used by Alembic.

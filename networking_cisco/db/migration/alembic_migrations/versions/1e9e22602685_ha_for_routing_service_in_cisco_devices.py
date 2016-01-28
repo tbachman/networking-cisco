@@ -28,7 +28,7 @@ down_revision = '53f08de0523f'
 from alembic import op
 import sqlalchemy as sa
 
-from neutron.plugins.cisco.extensions import ha
+from networking_cisco.plugins.cisco.extensions import ha
 
 
 ha_states = sa.Enum('ACTIVE', 'STANDBY', name='ha_states')
