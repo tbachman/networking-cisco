@@ -24,10 +24,10 @@ import time
 import uuid
 
 import eventlet
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_log import log as logging
 
 from neutron.common import config
-from neutron.openstack.common import log as logging
 from neutron.plugins.cisco.cpnr import netns
 from neutron.plugins.cisco.cpnr import debug_stats
 

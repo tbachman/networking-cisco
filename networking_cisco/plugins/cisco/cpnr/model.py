@@ -18,10 +18,10 @@ import time
 from itertools import groupby
 from operator import itemgetter
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from neutron.common import constants
-from neutron.openstack.common import log as logging
+from oslo_log import log as logging
 from neutron.agent.linux import dhcp
 from neutron.plugins.cisco.cpnr import cpnr_client
 from neutron.plugins.cisco.cpnr import dhcpopts
@@ -187,13 +187,21 @@ class Scope:
         ipv4_subnets = [sub for sub in network.subnets
                         if sub.enable_dhcp and sub.ip_version == 4]
         primary_subnet = ipv4_subnets[0].cidr
-        data = {'name': subnet.id,
-                'vpnId': vpnid,
-                'subnet': subnet.cidr,
-                'rangeList': range_list,
-                'restrictToReservations': 'enabled',
-                'embeddedPolicy': policy.data,
-                'primarySubnet': primary_subnet}
+        if (subnet.cidr == primary_subnet):
+            data = {'name': subnet.id,
+                    'vpnId': vpnid,
+                    'subnet': subnet.cidr,
+                    'rangeList': range_list,
+                    'restrictToReservations': 'enabled',
+                    'embeddedPolicy': policy.data}
+        else:
+            data = {'name': subnet.id,
+                    'vpnId': vpnid,
+                    'subnet': subnet.cidr,
+                    'rangeList': range_list,
+                    'restrictToReservations': 'enabled',
+                    'embeddedPolicy': policy.data,
+                    'primarySubnet': primary_subnet}
         return cls(data)
 
     @classmethod
@@ -325,13 +333,9 @@ class Policy:
                          'domain-name': cfg.CONF.dhcp_domain}
         for option in extra_options.items():
             options.append(option)
-        opt_list = []
-        for name, val in options:
-            opt = dhcpopts.format_for_pnr(name, val)
-            if opt:
-                opt_list.append(opt)
-        if opt_list:
-            data = {'optionList': {'OptionItem': opt_list}}
+
+        if options:
+            data = {'optionList': {'OptionItem': options}}
         else:
             data = {'optionList': {'list': []}}
         return cls(data)
@@ -341,9 +345,8 @@ class Policy:
         opt_list = []
         if hasattr(port, 'extra_dhcp_opts'):
             for opt in port.extra_dhcp_opts:
-                opt = dhcpopts.format_for_pnr(opt.opt_name, opt.opt_value)
-                if opt:
-                    opt_list.append(opt)
+                opt_list.append(opt)
+
         if opt_list:
             data = {'optionList': {'OptionItem': opt_list}}
         else:
@@ -677,7 +680,7 @@ def get_version():
     try:
         pnr = _get_client()
         verstr = pnr.get_version()
-        version = float(verstr.split()[2])
+        version = verstr.split()[2]
     except cpnr_client.CpnrException:
         LOG.warn("Failed to obtain CPNR version number")
     except StandardError:

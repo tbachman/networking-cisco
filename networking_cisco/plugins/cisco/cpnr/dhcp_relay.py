@@ -23,10 +23,10 @@ import struct
 import binascii
 
 import eventlet
-from oslo.config import cfg
+from oslo_config import cfg
 
 from neutron.common import config
-from neutron.openstack.common import log as logging
+from oslo_log import log as logging
 from neutron.plugins.cisco.cpnr import netns
 from neutron.plugins.cisco.cpnr import debug_stats
 
@@ -342,7 +342,7 @@ def main():
     eventlet.monkey_patch()
     cfg.CONF.register_opts(OPTS, 'cisco_pnr')
     cfg.CONF(project='neutron')
-    config.setup_logging(cfg.CONF)
+    config.setup_logging()
     if os.getuid() != 0:
         LOG.error(_('Must run dhcp relay as root'))
         return
