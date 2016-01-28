@@ -1,4 +1,4 @@
-# Copyright 2015 OpenStack Foundation
+# Copyright 2014 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,14 +16,14 @@
 """Cisco device management
 
 Revision ID: 2921fe565328
-Revises: 3c7f8bae9239
-Create Date: 2015-09-28 09:00:02.923237
+Revises: 28c0ffb8ebbd
+Create Date: 2014-12-18 13:00:02.923237
 
 """
 
 # revision identifiers, used by Alembic.
 revision = '2921fe565328'
-down_revision = '3c7f8bae9239'
+down_revision = 'kilo'
 
 from alembic import op
 import sqlalchemy as sa
@@ -80,8 +80,8 @@ def upgrade():
                       sa.Column('template_id', sa.String(length=36),
                                 nullable=False))
         op.create_foreign_key('cisco_hosting_devices_ibfk_3',
-                              source_table='cisco_hosting_devices',
-                              referent_table='cisco_hosting_device_templates',
+                              source='cisco_hosting_devices',
+                              referent='cisco_hosting_device_templates',
                               local_cols=['template_id'], remote_cols=['id'])
         op.create_index('template_id', 'cisco_hosting_devices',
                         ['template_id'])
@@ -104,3 +104,19 @@ def upgrade():
     op.create_index(op.f('ix_cisco_hosting_device_templates_tenant_id'),
                     'cisco_hosting_device_templates', ['tenant_id'],
                     unique=False)
+
+
+def downgrade():
+    op.drop_index(op.f('ix_cisco_hosting_device_templates_tenant_id'),
+                  table_name='cisco_hosting_device_templates')
+    op.drop_column('cisco_hosting_devices', 'auto_delete')
+    op.drop_column('cisco_hosting_devices', 'tenant_bound')
+    op.drop_column('cisco_hosting_devices', 'management_ip_address')
+    op.drop_column('cisco_hosting_devices', 'description')
+    op.drop_column('cisco_hosting_devices', 'name')
+    op.drop_column('cisco_hosting_devices', 'credentials_id')
+    op.drop_constraint('cisco_hosting_devices_ibfk_3',
+                       'cisco_hosting_devices', type_='foreignkey')
+    op.drop_column('cisco_hosting_devices', 'template_id')
+    op.drop_table('cisco_slot_allocations')
+    op.drop_table('cisco_hosting_device_templates')

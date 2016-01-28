@@ -17,18 +17,18 @@
 
 Revision ID: 1e9e22602685
 Revises: 53f08de0523f
-Create Date: 2015-09-28 09:33:27.294138
+Create Date: 2015-03-17 01:38:27.294138
 
 """
 
 # revision identifiers, used by Alembic.
 revision = '1e9e22602685'
-down_revision = '2921fe565328'
+down_revision = '53f08de0523f'
 
 from alembic import op
 import sqlalchemy as sa
 
-from networking_cisco.plugins.cisco.extensions import ha
+from neutron.plugins.cisco.extensions import ha
 
 
 ha_states = sa.Enum('ACTIVE', 'STANDBY', name='ha_states')
@@ -79,3 +79,9 @@ def upgrade():
         sa.ForeignKeyConstraint(['user_router_id'], ['routers.id']),
         sa.PrimaryKeyConstraint('redundancy_router_id')
     )
+
+
+def downgrade():
+    op.drop_table('cisco_router_ha_settings')
+    op.drop_table('cisco_router_ha_groups')
+    op.drop_table('cisco_router_redundancy_bindings')
