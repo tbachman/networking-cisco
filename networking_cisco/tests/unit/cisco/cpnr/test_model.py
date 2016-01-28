@@ -14,8 +14,7 @@
 
 import mock
 
-from oslo.config import cfg
-
+from oslo_config import cfg
 from neutron.agent import dhcp_agent
 from neutron.plugins.cisco.cpnr import cpnr_client
 from neutron.plugins.cisco.cpnr import dhcp_driver
@@ -24,7 +23,7 @@ from neutron.plugins.cisco.cpnr import dhcpopts
 from neutron.plugins.cisco.cpnr.tests.unit import fake_networks
 from neutron.tests import base
 
-dhcp_agent.register_options()
+dhcp_agent.register_options(cfg.CONF)
 
 
 class TestModel(base.BaseTestCase):
@@ -91,8 +90,7 @@ class TestModel(base.BaseTestCase):
                     'subnet': '172.9.9.0/24',
                     'rangeList': range_list,
                     'restrictToReservations': 'enabled',
-                    'embeddedPolicy': policy.data,
-                    'primarySubnet': '172.9.9.0/24'}
+                    'embeddedPolicy': policy.data}
         self.client.update_scope.assert_called_once_with(
             expected['name'], expected)
 
@@ -141,8 +139,7 @@ class TestModel(base.BaseTestCase):
                     'subnet': '172.9.9.0/24',
                     'rangeList': range_list,
                     'restrictToReservations': 'enabled',
-                    'embeddedPolicy': policy.data,
-                    'primarySubnet': '172.9.9.0/24'}
+                    'embeddedPolicy': policy.data}
         self.client.update_scope.assert_called_once_with(
             expected['name'], expected)
 
@@ -193,8 +190,7 @@ class TestModel(base.BaseTestCase):
                     'subnet': '172.9.9.0/24',
                     'rangeList': range_list,
                     'restrictToReservations': 'enabled',
-                    'embeddedPolicy': policy.data,
-                    'primarySubnet': '172.9.9.0/24'}
+                    'embeddedPolicy': policy.data}
         self.client.update_scope.assert_called_once_with(
             expected['name'], expected)
 
@@ -265,7 +261,7 @@ class TestModel(base.BaseTestCase):
 
         self.client.get_version.return_value = "CPNR Version 8.3"
         ver = model.get_version()
-        self.assertEquals(ver, 8.3)
+        self.assertEquals(ver, '8.3')
 
     def test_recover_networks(self):
         self.client.reset_mock()
@@ -338,7 +334,7 @@ class TestModel(base.BaseTestCase):
         opt_list_pnr_format = [dhcpopts.format_for_pnr(opts_list[i].opt_name,
                                                        opts_list[i].opt_value)
                                for i in range(len(opts_list))]
-        expected = {'OptionItem': opt_list_pnr_format}
+        expected = {'OptionItem': opts_list}
         self.assertEquals(policy.data['optionList'], expected)
 
     def test_policy_from_subnet(self):
@@ -354,9 +350,7 @@ class TestModel(base.BaseTestCase):
                             ('dhcp-lease-time',
                              str(cfg.CONF.dhcp_lease_duration)),
                             ('domain-name', cfg.CONF.dhcp_domain)]
-        policy_list_pnr_format = [dhcpopts.format_for_pnr(name, val)
-                                  for name, val in fake_policy_opts]
-        expected = {'OptionItem': policy_list_pnr_format}
+        expected = {'OptionItem': fake_policy_opts}
         self.assertEquals(policy.data['optionList'], expected)
 
     def test_scope_from_subnet(self):
@@ -373,8 +367,7 @@ class TestModel(base.BaseTestCase):
                     'subnet': '172.9.9.0/24',
                     'rangeList': range_list,
                     'restrictToReservations': 'enabled',
-                    'embeddedPolicy': policy.data,
-                    'primarySubnet': '172.9.9.0/24'}
+                    'embeddedPolicy': policy.data}
         scope = model.Scope.from_neutron(fake_networks.fake_net3,
                                          fake_networks.fake_subnet1)
         self.assertEquals(scope.data, expected)
