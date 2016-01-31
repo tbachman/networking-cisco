@@ -24,6 +24,8 @@ from neutron import context
 from neutron.extensions import extraroute
 from neutron.extensions import l3
 from neutron.tests import fake_notifier
+from networking_cisco.tests.unit.cisco import (
+    test_setup_monkeypatch as mp) # noqa
 
 import networking_cisco.plugins
 from networking_cisco.plugins.cisco.db.l3 import ha_db

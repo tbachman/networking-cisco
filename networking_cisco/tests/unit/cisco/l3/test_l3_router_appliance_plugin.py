@@ -19,6 +19,8 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import six
 
+from networking_cisco.tests.unit.cisco import (
+    test_setup_monkeypatch as mp) # noqa
 from neutron.api.v2 import attributes
 from neutron import context as q_context
 from neutron.db import agents_db

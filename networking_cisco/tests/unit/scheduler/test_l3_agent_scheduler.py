@@ -179,7 +179,7 @@ class L3SchedulerBaseTestCase(base.BaseTestCase):
         ]
         self.plugin.get_routers.return_value = expected_routers
         with mock.patch.object(self.scheduler,
-                               '_filter_unscheduled_routers') as mock_filter:
+                               'filter_unscheduled_routers') as mock_filter:
             mock_filter.return_value = expected_routers
             unscheduled_routers = self.scheduler._get_routers_to_schedule(
                 mock.ANY, self.plugin, router_ids)

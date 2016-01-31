@@ -55,7 +55,7 @@ class L3RouterTypeAwareScheduler(l3_agent_scheduler.L3Scheduler):
                 context, filters={'id': unscheduled_router_ids})
         return []
 
-    def _filter_unscheduled_routers(self, context, plugin, routers):
+    def filter_unscheduled_routers(self, context, plugin, routers):
         """Filter from list of routers the ones that are not scheduled."""
         unscheduled_routers = []
         for router in routers:

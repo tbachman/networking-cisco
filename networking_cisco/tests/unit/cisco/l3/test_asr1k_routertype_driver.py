@@ -17,6 +17,8 @@ from oslo_utils import uuidutils
 
 from neutron import context
 from neutron.extensions import l3
+from networking_cisco.tests.unit.cisco import (
+    test_setup_monkeypatch as mp) # noqa
 
 from networking_cisco.plugins.cisco.common import cisco_constants
 from networking_cisco.plugins.cisco.db.l3 import ha_db

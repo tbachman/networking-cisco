@@ -20,6 +20,8 @@ from oslo_config import cfg
 import six
 import webob.exc
 
+from networking_cisco.tests.unit.cisco import (
+    test_setup_monkeypatch as mp) # noqa
 from neutron.common import constants as n_const
 from neutron import context as n_context
 from neutron import manager

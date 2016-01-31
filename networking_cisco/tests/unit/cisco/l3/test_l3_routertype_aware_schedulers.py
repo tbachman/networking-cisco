@@ -21,6 +21,8 @@ from oslo_utils import importutils
 from oslo_utils import uuidutils
 from webob import exc
 
+from networking_cisco.tests.unit.cisco import (
+    test_setup_monkeypatch as mp) # noqa
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.common import constants
 from neutron.common import test_lib
