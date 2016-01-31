@@ -25,7 +25,7 @@ from neutron.plugins.common import constants as service_constants
 from neutron.tests.unit.extensions import test_l3
 
 from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch as mp)
+    test_setup_monkeypatch)  # noqa
 
 from networking_cisco.plugins.cisco.device_manager.plugging_drivers.\
     n1kv_ml2_trunking_driver import N1kvML2TrunkingPlugDriver

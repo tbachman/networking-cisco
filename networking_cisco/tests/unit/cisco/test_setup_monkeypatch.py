@@ -13,39 +13,45 @@
 #    under the License.
 
 
-#from oslo_log import log as logging
-#LOG = logging.getLogger(__name__)
-#LOG.warn("*********** Printing traceback for test_setup_monkeypatch.py **********")
-#import traceback
-#traceback.print_stack()
 from neutron.db import model_base
 from neutron.plugins.cisco.db.l3 import l3_models as old_l3
 
 # We can't import everyting first, otherwise we run into an exception
 # with the Metadata class for multiple tables with the same name.
 # First remove the upstream tables from the Metadata class
-tables_to_drop = ['cisco_hosting_devices', 'cisco_port_mappings', 'cisco_router_mappings']
-for tb in model_base.BASEV2.metadata.sorted_tables:
-    if tb.name in tables_to_drop:
-        model_base.BASEV2.metadata.remove(tb)
+tables_to_drop = ['cisco_hosting_devices',
+                  'cisco_port_mappings', 'cisco_router_mappings']
+for tbl in model_base.BASEV2.metadata.sorted_tables:
+    if tbl.name in tables_to_drop:
+        model_base.BASEV2.metadata.remove(tbl)
 
 # Now it's safe to import the new tables. However we still
 # need to re-map the old model classes to our new ones
-from networking_cisco.plugins.cisco.db.device_manager import hd_models as hdm
-from networking_cisco.plugins.cisco.db.l3 import l3_models as new_l3
+from networking_cisco.plugins.cisco.db.device_manager import (
+    hd_models as hdm)  # noqa
+from networking_cisco.plugins.cisco.db.l3 import (
+    l3_models as new_l3)  # noqa
 
 old_l3.HostingDevice = hdm.HostingDevice
 old_l3.HostedHostingPortBinding = hdm.HostedHostingPortBinding
 old_l3.RouterHostingDeviceBinding = new_l3.RouterHostingDeviceBinding
 
-from neutron.plugins.ml2.drivers.cisco.n1kv import n1kv_models as old_n1kv
+from neutron.plugins.ml2.drivers.cisco.n1kv import (
+    n1kv_models as old_n1kv)  # noqa
 
-tables_to_drop = ['cisco_ml2_n1kv_policy_profiles', 'cisco_ml2_n1kv_network_profiles', 'cisco_ml2_n1kv_port_bindings', 'cisco_ml2_n1kv_network_bindings','cisco_ml2_n1kv_vlan_allocations', 'cisco_ml2_n1kv_vxlan_allocations','cisco_ml2_n1kv_profile_bindings' ]
-for tb in model_base.BASEV2.metadata.sorted_tables:
-    if tb.name in tables_to_drop:
-        model_base.BASEV2.metadata.remove(tb)
+tables_to_drop = ['cisco_ml2_n1kv_policy_profiles',
+                  'cisco_ml2_n1kv_network_profiles',
+                  'cisco_ml2_n1kv_port_bindings',
+                  'cisco_ml2_n1kv_network_bindings',
+                  'cisco_ml2_n1kv_vlan_allocations',
+                  'cisco_ml2_n1kv_vxlan_allocations',
+                  'cisco_ml2_n1kv_profile_bindings']
+for tbl in model_base.BASEV2.metadata.sorted_tables:
+    if tbl.name in tables_to_drop:
+        model_base.BASEV2.metadata.remove(tbl)
 
-from networking_cisco.plugins.ml2.drivers.cisco.n1kv import n1kv_models as new_n1kv
+from networking_cisco.plugins.ml2.drivers.cisco.n1kv import (
+    n1kv_models as new_n1kv)  # noqa
 old_n1kv.PolicyProfile = new_n1kv.PolicyProfile
 old_n1kv.NetworkProfile = new_n1kv.NetworkProfile
 old_n1kv.N1kvPortBinding = new_n1kv.N1kvPortBinding

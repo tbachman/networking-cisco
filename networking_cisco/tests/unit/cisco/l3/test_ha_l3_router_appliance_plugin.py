@@ -25,7 +25,7 @@ from neutron.extensions import extraroute
 from neutron.extensions import l3
 from neutron.tests import fake_notifier
 from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch as mp) # noqa
+    test_setup_monkeypatch)  # noqa
 
 import networking_cisco.plugins
 from networking_cisco.plugins.cisco.db.l3 import ha_db
@@ -96,7 +96,7 @@ class HAL3RouterApplianceNamespaceTestCase(
 
 class HAL3RouterTestsMixin(object):
 
-    # TODO: remove for liberty -- this fixes a bug in core neutron
+    # TODO(tbachman): remove for liberty -- this fixes a bug in core neutron
     #       code, which is fixed in liberty
     def _create_router(self, fmt, tenant_id, name=None,
                        admin_state_up=None, set_context=False,

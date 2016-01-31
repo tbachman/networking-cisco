@@ -18,7 +18,7 @@ from oslo_utils import uuidutils
 from neutron import context
 from neutron.extensions import l3
 from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch as mp) # noqa
+    test_setup_monkeypatch)  # noqa
 
 from networking_cisco.plugins.cisco.common import cisco_constants
 from networking_cisco.plugins.cisco.db.l3 import ha_db
@@ -705,7 +705,7 @@ class L3CfgAgentAsr1kRouterTypeDriverTestCase(
         self.plugin.get_sync_data = self.orig_get_sync_data
         super(L3CfgAgentAsr1kRouterTypeDriverTestCase, self).tearDown()
 
-    # TODO: remove for liberty -- this fixes a bug in core neutron
+    # TODO(tbachman): remove for liberty -- this fixes a bug in core neutron
     #       code, which is fixed in liberty
     def _create_router(self, fmt, tenant_id, name=None,
                        admin_state_up=None, set_context=False,

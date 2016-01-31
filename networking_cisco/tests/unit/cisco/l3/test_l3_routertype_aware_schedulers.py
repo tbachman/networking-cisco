@@ -22,7 +22,7 @@ from oslo_utils import uuidutils
 from webob import exc
 
 from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch as mp) # noqa
+    test_setup_monkeypatch)  # noqa
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.common import constants
 from neutron.common import test_lib
@@ -383,7 +383,7 @@ class L3RoutertypeAwareHostingDeviceSchedulerTestCaseBase(
         super(L3RoutertypeAwareHostingDeviceSchedulerTestCaseBase,
               self).tearDown()
 
-    # TODO: remove for liberty -- this fixes a bug in core neutron
+    # TODO(tbachman): remove for liberty -- this fixes a bug in core neutron
     #       code, which is fixed in liberty
     def _create_router(self, fmt, tenant_id, name=None,
                        admin_state_up=None, set_context=False,
@@ -404,6 +404,7 @@ class L3RoutertypeAwareHostingDeviceSchedulerTestCaseBase(
                 '', tenant_id)
 
         return router_req.get_response(self.ext_api)
+
 
 class L3RoutertypeAwareHostingDeviceSchedulerBaseTestCase(
         L3RoutertypeAwareHostingDeviceSchedulerTestCaseBase):

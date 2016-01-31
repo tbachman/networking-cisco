@@ -46,9 +46,10 @@ class ServiceVMManager(object):
     def __init__(self, is_auth_v3, user=None, passwd=None,
                  l3_admin_tenant=None, auth_url='', keystone_session=None):
 
+        # TODO(tbachman): restore for liberty
         #if is_auth_v3:
-            #self._nclient = client.Client('2', session=keystone_session,
-                                          #service_type="compute")
+        #    self._nclient = client.Client('2', session=keystone_session,
+        #                                  service_type="compute")
         if True:
             self._nclient = client.Client('2', user, passwd, l3_admin_tenant,
                                           auth_url, service_type="compute")

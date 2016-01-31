@@ -20,7 +20,7 @@ from oslo_utils import importutils
 from neutron.common import constants
 from neutron.db import agentschedulers_db
 from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch as mp)
+    test_setup_monkeypatch)   # noqa
 from neutron.tests.unit.plugins.openvswitch import test_agent_scheduler
 
 from networking_cisco.plugins.cisco.common import cisco_constants as c_const
