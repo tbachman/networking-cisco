@@ -20,8 +20,7 @@ from oslo_config import cfg
 import six
 import webob.exc
 
-from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch)  # noqa
+import networking_cisco.tests.unit.cisco.test_setup_monkeypatch  # noqa
 from neutron.common import constants as n_const
 from neutron import context as n_context
 from neutron import manager
@@ -256,6 +255,7 @@ class TestRoutertypeDBPlugin(test_db_base_plugin_v2.NeutronDbPluginV2TestCase,
         self.l3_plugin = manager.NeutronManager.get_service_plugins()[
             constants.L3_ROUTER_NAT]
         # Ensure we use policy definitions from our repo
+        # TODO(tbachman): restore for liberty
         #cfg.CONF.set_override('policy_file', policy_path, 'oslo_policy')
 
     def test_create_routertype(self):
@@ -279,6 +279,7 @@ class TestRoutertypeDBPlugin(test_db_base_plugin_v2.NeutronDbPluginV2TestCase,
                 for k, v in six.iteritems(attrs):
                     self.assertEqual(res['routertype'][k], v)
 
+    # TODO(tbachman): restore for liberty
     def _test_show_routertype_non_admin(self):
         with self.hosting_device_template() as hdt:
             hdt_id = hdt['hosting_device_template']['id']
@@ -333,6 +334,7 @@ class TestRoutertypeDBPlugin(test_db_base_plugin_v2.NeutronDbPluginV2TestCase,
                 self.assertRaises(routertype.RouterTypeNotFound,
                                   self.l3_plugin.get_routertype, ctx, rt_id)
 
+    # TODO(tbachman): restore for liberty
     def _test_routertype_policy(self):
         with self.hosting_device_template() as hdt:
             hdt_id = hdt['hosting_device_template']['id']

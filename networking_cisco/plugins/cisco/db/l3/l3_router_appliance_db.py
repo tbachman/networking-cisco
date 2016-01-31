@@ -42,8 +42,8 @@ from neutron.db import l3_db
 from neutron.extensions import l3
 from neutron.extensions import providernet as pr_net
 from neutron.i18n import _LE, _LI
-from neutron.openstack.common import loopingcall
 from neutron import manager
+from neutron.openstack.common import loopingcall
 from neutron.plugins.common import constants as svc_constants
 
 from networking_cisco.plugins.cisco.common import cisco_constants

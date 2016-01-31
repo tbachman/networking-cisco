@@ -21,8 +21,7 @@ from oslo_utils import importutils
 from oslo_utils import uuidutils
 from webob import exc
 
-from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch)  # noqa
+import networking_cisco.tests.unit.cisco.test_setup_monkeypatch  # noqa
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.common import constants
 from neutron.common import test_lib
@@ -32,8 +31,8 @@ from neutron.extensions import l3
 from neutron import manager
 from neutron.plugins.common import constants as plugin_consts
 from neutron.tests import fake_notifier
-from neutron.tests.unit.plugins.openvswitch import test_agent_scheduler
 from neutron.tests.unit.extensions import test_l3
+from neutron.tests.unit.plugins.openvswitch import test_agent_scheduler
 
 from networking_cisco.plugins.cisco.common import cisco_constants as c_const
 from networking_cisco.plugins.cisco.db.l3 import ha_db
@@ -702,6 +701,7 @@ class L3RoutertypeAwareHostingDeviceSchedulerTestCase(
             self.assertEqual(r_after[routertype.TYPE_ATTR], rt_id)
             self.assertIsNone(r_after[HOSTING_DEVICE_ATTR])
 
+    # TODO(tbachman): restore for liberty
     def _test_router_scheduling_policy(self):
         with self.router() as router1, self.router() as router2:
             r1 = router1['router']

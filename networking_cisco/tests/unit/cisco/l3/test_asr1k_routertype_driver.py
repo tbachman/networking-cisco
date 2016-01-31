@@ -15,10 +15,9 @@
 from oslo_config import cfg
 from oslo_utils import uuidutils
 
+import networking_cisco.tests.unit.cisco.test_setup_monkeypatch  # noqa
 from neutron import context
 from neutron.extensions import l3
-from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch)  # noqa
 
 from networking_cisco.plugins.cisco.common import cisco_constants
 from networking_cisco.plugins.cisco.db.l3 import ha_db

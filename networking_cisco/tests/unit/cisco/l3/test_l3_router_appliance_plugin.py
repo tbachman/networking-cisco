@@ -19,8 +19,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import six
 
-from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch)  # noqa
+import networking_cisco.tests.unit.cisco.test_setup_monkeypatch  # noqa
 from neutron.api.v2 import attributes
 from neutron import context as q_context
 from neutron.db import agents_db
@@ -159,6 +158,7 @@ class L3RouterApplianceTestCaseBase(
             ext_mgr=ext_mgr)
 
         # Ensure we use policy definitions from our repo
+        # TODO(tbachman): restore for liberty
         #cfg.CONF.set_override('policy_file', policy_path, 'oslo_policy')
 
         self.core_plugin = manager.NeutronManager.get_plugin()

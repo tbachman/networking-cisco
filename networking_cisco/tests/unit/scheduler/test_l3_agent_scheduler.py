@@ -26,6 +26,7 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from sqlalchemy.orm import query
 
+from networking_cisco.tests.unit.scheduler import helpers
 from neutron.common import constants
 from neutron import context as n_context
 from neutron.db import agents_db
@@ -43,7 +44,6 @@ from neutron.tests import base
 from neutron.tests.unit.db import test_db_base_plugin_v2
 from neutron.tests.unit.extensions import test_l3
 from neutron.tests.unit import testlib_api
-from networking_cisco.tests.unit.scheduler import helpers
 
 # the below code is required for the following reason
 # (as documented in testscenarios)

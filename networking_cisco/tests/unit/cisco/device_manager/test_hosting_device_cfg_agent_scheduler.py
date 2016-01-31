@@ -24,8 +24,8 @@ from neutron import context as n_context
 from neutron import manager
 from neutron.plugins.common import constants as svc_constants
 from neutron.tests import fake_notifier
-from neutron.tests.unit.plugins.openvswitch import test_agent_scheduler
 from neutron.tests.unit.db import test_db_base_plugin_v2
+from neutron.tests.unit.plugins.openvswitch import test_agent_scheduler
 
 import networking_cisco
 from networking_cisco.plugins.cisco.common import cisco_constants as c_const
@@ -128,6 +128,7 @@ class HostingDeviceConfigAgentSchedulerTestCaseBase(
             ext_mgr=ext_mgr)
 
         # Ensure we use policy definitions from our repo
+        # TODO(tbachman): restore for liberty
         #cfg.CONF.set_override('policy_file', policy_path, 'oslo_policy')
         self.core_plugin = manager.NeutronManager.get_plugin()
         self.plugin = self.core_plugin
@@ -303,6 +304,7 @@ class HostingDeviceConfigAgentSchedulerTestCase(
                                       hd['id'])['hosting_device']
                 self.assertIsNone(hd_after['cfg_agent_id'])
 
+    # TODO(tbachman): restore for liberty
     def _test_hosting_device_scheduling_policy(self):
         self._setup_cfg_agents()
         with self.hosting_device_template(

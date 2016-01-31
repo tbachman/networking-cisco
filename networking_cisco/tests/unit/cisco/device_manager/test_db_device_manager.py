@@ -22,13 +22,12 @@ from oslo_utils import importutils
 import six
 import webob.exc
 
+import networking_cisco.tests.unit.cisco.test_setup_monkeypatch  # noqa
 from neutron.api import extensions as api_ext
 from neutron.common import config
 from neutron import context as n_context
 from neutron.manager import NeutronManager
 from neutron.plugins.common import constants as svc_constants
-from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch)  # noqa
 from neutron.tests.unit.db import test_db_base_plugin_v2
 
 import networking_cisco
@@ -264,7 +263,6 @@ class TestDeviceManagerDBPlugin(
     DeviceManagerTestCaseMixin,
         device_manager_test_support.DeviceManagerTestSupportMixin):
 
-    svc_constants.COMMON_PREFIXES[c_constants.DEVICE_MANAGER] = "/dev_mgr"
     hdm_db.HostingDeviceManagerMixin.path_prefix = "/dev_mgr"
     resource_prefix_map = dict(
         (k, "/dev_mgr")
@@ -284,6 +282,7 @@ class TestDeviceManagerDBPlugin(
             plugin=core_plugin, service_plugins=service_plugins,
             ext_mgr=ext_mgr)
         # Ensure we use policy definitions from our repo
+        # TODO(tbachman): restore for liberty
         #cfg.CONF.set_override('policy_file', policy_path, 'oslo_policy')
         if not ext_mgr:
             self.plugin = importutils.import_object(dm_plugin)
@@ -527,6 +526,7 @@ class TestDeviceManagerDBPlugin(
                         self.assertEqual(mock_prepare.call_count, 0)
                         self.assertEqual(mock_call.call_count, 0)
 
+    # TODO(tbachman): restore for liberty
     def _test_hosting_device_policy(self):
         device_id = "device_XYZ"
         with self.hosting_device_template() as hdt:

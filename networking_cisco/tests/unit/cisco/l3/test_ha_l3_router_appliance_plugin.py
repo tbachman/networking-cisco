@@ -19,13 +19,12 @@ from oslo_log import log as logging
 from oslo_utils import uuidutils
 import webob.exc
 
+import networking_cisco.tests.unit.cisco.test_setup_monkeypatch  # noqa
 from neutron.common import constants as l3_constants
 from neutron import context
 from neutron.extensions import extraroute
 from neutron.extensions import l3
 from neutron.tests import fake_notifier
-from networking_cisco.tests.unit.cisco import (
-    test_setup_monkeypatch)  # noqa
 
 import networking_cisco.plugins
 from networking_cisco.plugins.cisco.db.l3 import ha_db
