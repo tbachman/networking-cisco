@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-#from novaclient import client
 from novaclient import exceptions as nova_exc
 from novaclient import utils as n_utils
 from novaclient.v2 import client
@@ -46,12 +45,11 @@ class ServiceVMManager(object):
     def __init__(self, is_auth_v3, user=None, passwd=None,
                  l3_admin_tenant=None, auth_url='', keystone_session=None):
 
-        # TODO(tbachman): restore for liberty
-        #if is_auth_v3:
-        #    self._nclient = client.Client('2', session=keystone_session,
-        #                                  service_type="compute")
+        if is_auth_v3:
+            self._nclient = client.Client(session=keystone_session,
+                                          service_type="compute")
         if True:
-            self._nclient = client.Client('2', user, passwd, l3_admin_tenant,
+            self._nclient = client.Client(user, passwd, l3_admin_tenant,
                                           auth_url, service_type="compute")
 
     @property
