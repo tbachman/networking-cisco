@@ -1,0 +1,15 @@
+Source: networking-cisco
+Section: python
+Priority: optional
+Maintainer: Cisco Systems, Inc. <openstack-networking@cisco.com>
+Build-Depends: debhelper (>= 9), python-setuptools (>= 3.3), python-all (>= 2.7)
+Standards-Version: 3.9.5
+Homepage: https://github.com/CiscoSystems/networking-cisco
+Vcs-Browser: https://github.com/CiscoSystems/networking-cisco
+
+Package: networking-cisco
+Architecture: all
+Depends: ${misc:Depends}, ncclient, ciscoconfparse,
+         python-novaclient, UcsSdk, ${python:Depends}, ${python:Versions}
+Description: Neutron ML2 driver for Cisco APIC
+ Standalone Openstack Neutron ML2 driver for working with Cisco APIC
