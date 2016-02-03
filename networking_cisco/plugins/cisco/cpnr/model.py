@@ -334,8 +334,14 @@ class Policy:
         for option in extra_options.items():
             options.append(option)
 
-        if options:
-            data = {'optionList': {'OptionItem': options}}
+        opt_list = []
+        for name, val in options:
+            opt = dhcpopts.format_for_pnr(name, val)
+            if opt:
+                opt_list.append(opt)
+
+        if opt_list:
+            data = {'optionList': {'OptionItem': opt_list}}
         else:
             data = {'optionList': {'list': []}}
         return cls(data)
