@@ -18,7 +18,6 @@ from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 
-
 def format_for_pnr(name, value):
     name = name.strip()
     value = value.strip()
@@ -26,14 +25,7 @@ def format_for_pnr(name, value):
         LOG.warn(_("Unrecognized DHCP options: %s"), name)
         return None
     code, datatype = OPTIONS[name]
-    try:
-        value = _format_value(datatype, value)
-    except Exception:
-        LOG.warn(_("Failed to parse DHCP option: %s"), name)
-        return None
-    value = ':'.join(value[i:i+2] for i in range(0, len(value), 2))
     return {'number': str(code), 'value': value}
-
 
 def _format_value(datatype, value):
     datatype = datatype.strip()
