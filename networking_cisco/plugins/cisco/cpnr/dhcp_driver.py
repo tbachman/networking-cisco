@@ -186,8 +186,7 @@ class RemoteServerDriver(dhcp.DhcpBase):
                 return
             LOG.debug(_("Setting up device for network: %s"),
                       self.network.id)
-            ifname = self.device_manager.setup(self.network,
-                                               reuse_existing=True)
+            ifname = self.device_manager.setup(self.network)
             _devices[self.network.id] = ifname
             self._write_intf_file()
         elif disabled:
